@@ -46,3 +46,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ## Workspace goal
 
 Keep the repository self-contained so the Linux workspace can build the app without relying on Windows-local Android tooling.
+
+## Agent runbooks
+
+- For private GitHub repository auth issues in Codespaces, see `./codespaces-private-repo-auth.md`.
