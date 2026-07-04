@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Droplet body, gradient-filled, kept inside the 66dp adaptive-icon safe zone -->
+    <path android:pathData="M54,25.05
+        L37.02,42
+        C32.34,46.68 30,52.92 30,58.92
+        C30,72.18 40.74,82.92 54,82.92
+        C67.26,82.92 78,72.18 78,58.92
+        C78,52.92 75.66,46.68 70.98,42
+        L54,25.05
+        Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54"
+                android:startY="25.05"
+                android:endX="54"
+                android:endY="82.92"
+                android:startColor="#60A5FA"
+                android:endColor="#1D4ED8" />
+        </aapt:attr>
+    </path>
+    <!-- Glossy highlight -->
+    <path
+        android:pathData="M40,38 a5,8 0 1,0 10,0 a5,8 0 1,0 -10,0 Z"
+        android:fillColor="#66FFFFFF" />
+</vector>

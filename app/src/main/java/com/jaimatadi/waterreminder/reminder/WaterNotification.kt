@@ -1,6 +1,7 @@
 package com.jaimatadi.waterreminder.reminder
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -8,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -20,20 +22,35 @@ class WaterNotification(private val context: Context) {
     fun createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
+        val manager = context.getSystemService(NotificationManager::class.java)
+        // Importance/vibration are immutable after a channel is first created, so
+        // the old id is retired here to make sure vibration actually takes effect
+        // on devices that already created it without vibration.
+        manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Water reminders",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Reminds you to drink water during your configured day."
+            enableVibration(true)
         }
 
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        manager.createNotificationChannel(channel)
     }
 
     fun showReminder() {
         createChannel()
-        launchAlarmActivity()
+
+        // Force the full-screen alarm UI only when the phone is locked or the
+        // screen is off, matching how alarm/call apps behave. Otherwise leave it
+        // to the notification below: a high-priority full-screen-intent
+        // notification degrades to a heads-up banner when the device is already
+        // awake and unlocked.
+        if (isDeviceLockedOrAsleep()) {
+            launchAlarmActivity()
+        }
 
         if (!canPostNotifications()) return
 
@@ -59,6 +76,12 @@ class WaterNotification(private val context: Context) {
 
     fun dismiss() {
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+    }
+
+    private fun isDeviceLockedOrAsleep(): Boolean {
+        val keyguardManager = context.getSystemService(KeyguardManager::class.java)
+        val powerManager = context.getSystemService(PowerManager::class.java)
+        return keyguardManager?.isKeyguardLocked == true || powerManager?.isInteractive == false
     }
 
     private fun canPostNotifications(): Boolean {
@@ -121,7 +144,8 @@ class WaterNotification(private val context: Context) {
     }
 
     companion object {
-        private const val CHANNEL_ID = "water_reminders"
+        private const val LEGACY_CHANNEL_ID = "water_reminders"
+        private const val CHANNEL_ID = "water_reminders_v2"
         private const val NOTIFICATION_ID = 2000
     }
 }
