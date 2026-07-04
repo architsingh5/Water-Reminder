@@ -43,14 +43,11 @@ class WaterNotification(private val context: Context) {
     fun showReminder() {
         createChannel()
 
-        // Force the full-screen alarm UI only when the phone is locked or the
-        // screen is off, matching how alarm/call apps behave. Otherwise leave it
-        // to the notification below: a high-priority full-screen-intent
-        // notification degrades to a heads-up banner when the device is already
-        // awake and unlocked.
-        if (isDeviceLockedOrAsleep()) {
-            launchAlarmActivity()
-        }
+        // Always show the alarm activity: full screen when the phone is locked
+        // or asleep, or as a top-anchored floating card (like a real alarm's
+        // ringing banner) when the phone is already awake and unlocked.
+        val locked = isDeviceLockedOrAsleep()
+        launchAlarmActivity(locked)
 
         if (!canPostNotifications()) return
 
@@ -105,6 +102,7 @@ class WaterNotification(private val context: Context) {
     private fun alarmPendingIntent(): PendingIntent {
         val intent = Intent(context, AlarmActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(AlarmActivity.EXTRA_LOCKED, true)
         }
         return PendingIntent.getActivity(
             context,
@@ -114,20 +112,21 @@ class WaterNotification(private val context: Context) {
         )
     }
 
-    private fun launchAlarmActivity() {
+    private fun launchAlarmActivity(locked: Boolean) {
         val intent = Intent(context, AlarmActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(AlarmActivity.EXTRA_LOCKED, locked)
         }
 
-        // Full-screen launch can be blocked by OEM background-activity-start
+        // Activity launch can be blocked by OEM background-activity-start
         // restrictions; failing here must never prevent the notification below
         // from being posted, since it's the only remaining visible signal.
         runCatching {
             context.startActivity(intent)
         }.onFailure {
-            Log.w("WaterNotification", "Failed to launch full-screen alarm activity", it)
+            Log.w("WaterNotification", "Failed to launch alarm activity", it)
         }
     }
 
