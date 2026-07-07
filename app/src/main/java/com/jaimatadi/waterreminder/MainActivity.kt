@@ -182,7 +182,11 @@ private fun WaterReminderApp(viewModel: ReminderViewModel) {
                     onResetToday = viewModel::resetTodayMetrics,
                 )
                 WeekChartCard(state)
-                SettingsCard(state, onSave = viewModel::saveSettings)
+                SettingsCard(
+                    state,
+                    onSave = viewModel::saveSettings,
+                    onRespectSilentChange = viewModel::setRespectSilentMode,
+                )
                 ReliabilityCard(
                     hasNotificationPermission = hasNotificationPermission,
                     notificationPermissionPermanentlyDenied = notificationPermissionPermanentlyDenied,
@@ -532,6 +536,7 @@ private fun WeekBarChart(
 private fun SettingsCard(
     state: ReminderState,
     onSave: (LocalTime, LocalTime, Long, Long, Int) -> Unit,
+    onRespectSilentChange: (Boolean) -> Unit,
 ) {
     var dayStart by remember(state.dayStart) { mutableStateOf(state.dayStart) }
     var dayEnd by remember(state.dayEnd) { mutableStateOf(state.dayEnd) }
@@ -581,6 +586,28 @@ private fun SettingsCard(
                 onDecrement = { goal = (goal - 1).coerceAtLeast(1) },
                 onIncrement = { goal = (goal + 1).coerceAtMost(30) },
             )
+
+            // Applies immediately, unlike the fields above: it changes alert
+            // behavior, not the reminder schedule, so no reschedule is needed.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Respect silent mode", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Skip the alarm sound when the phone is on vibrate or silent",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(
+                    checked = state.respectSilentMode,
+                    onCheckedChange = onRespectSilentChange
+                )
+            }
 
             AnimatedVisibility(visible = dirty) {
                 Button(

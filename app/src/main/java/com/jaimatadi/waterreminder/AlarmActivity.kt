@@ -3,6 +3,7 @@ package com.jaimatadi.waterreminder
 import android.app.KeyguardManager
 import android.content.Intent
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
@@ -57,9 +58,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import androidx.lifecycle.lifecycleScope
+import com.jaimatadi.waterreminder.data.ReminderRepository
 import com.jaimatadi.waterreminder.reminder.ReminderActions
 import com.jaimatadi.waterreminder.reminder.ReminderReceiver
 import com.jaimatadi.waterreminder.ui.theme.WaterTheme
+import kotlinx.coroutines.launch
 
 class AlarmActivity : ComponentActivity() {
     private var alarmPlayer: MediaPlayer? = null
@@ -89,7 +93,7 @@ class AlarmActivity : ComponentActivity() {
             sendReminderAction(ReminderActions.Skip)
         }
 
-        startAlarmSound()
+        maybeStartAlarmSound()
 
         setContent {
             WaterTheme {
@@ -108,7 +112,7 @@ class AlarmActivity : ComponentActivity() {
         setIntent(intent)
         // A new reminder fired while this alarm was still showing: ring again.
         stopAlarmSound()
-        startAlarmSound()
+        maybeStartAlarmSound()
     }
 
     override fun onStop() {
@@ -127,6 +131,24 @@ class AlarmActivity : ComponentActivity() {
             this.action = action
         })
         finish()
+    }
+
+    // The alarm plays on the ALARM audio stream, which ignores ringer mode by
+    // design. When the user opts in, honor vibrate/silent by skipping the
+    // sound entirely; the notification still vibrates or shows silently.
+    private fun maybeStartAlarmSound() {
+        lifecycleScope.launch {
+            val respectSilent = runCatching {
+                ReminderRepository(applicationContext).snapshot().respectSilentMode
+            }.getOrDefault(false)
+            if (respectSilent && isRingerMuted()) return@launch
+            startAlarmSound()
+        }
+    }
+
+    private fun isRingerMuted(): Boolean {
+        val audioManager = getSystemService(AudioManager::class.java)
+        return audioManager != null && audioManager.ringerMode != AudioManager.RINGER_MODE_NORMAL
     }
 
     private fun startAlarmSound() {

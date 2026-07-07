@@ -89,6 +89,12 @@ class ReminderViewModel(
         }
     }
 
+    fun setRespectSilentMode(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setRespectSilentMode(enabled)
+        }
+    }
+
     fun resetTodayMetrics() {
         viewModelScope.launch {
             repository.resetTodayMetrics()

@@ -16,6 +16,7 @@ Native Android water reminder app for configurable awake hours, snooze, skip, an
 - Date-wise analytics show daily drank, reminder, and skipped counts.
 - `Reset today` clears only the current day's visible metrics.
 - Reminder alerts open a full-screen alarm-style screen, play an alarm sound (auto-silenced after 60 seconds), and treat swipe-dismiss as skip so the next reminder advances.
+- Optional respect silent mode: skip the alarm sound while the phone is on vibrate or silent (off by default; the alarm otherwise rings like a real alarm clock).
 - Light and dark themes follow the system setting, including the widget.
 
 Example: with a 60-minute interval, if a 10:00 reminder is snoozed for 15 minutes and `Drank` is tapped at 10:15, the next reminder is scheduled for 11:15.

@@ -26,6 +26,7 @@ data class ReminderState(
     val intervalMinutes: Long = 60,
     val snoozeMinutes: Long = 15,
     val dailyGoal: Int = 8,
+    val respectSilentMode: Boolean = false,
     val nextReminderAt: Instant? = null,
     val lastShownAt: Instant? = null,
     val lastDrinkAt: Instant? = null,
@@ -68,6 +69,7 @@ class ReminderRepository(context: Context) {
             intervalMinutes = preferences[Keys.intervalMinutes] ?: 60L,
             snoozeMinutes = preferences[Keys.snoozeMinutes] ?: 15L,
             dailyGoal = preferences[Keys.dailyGoal] ?: 8,
+            respectSilentMode = preferences[Keys.respectSilentMode] ?: false,
             nextReminderAt = preferences[Keys.nextReminderAtMillis]?.let(Instant::ofEpochMilli),
             lastShownAt = preferences[Keys.lastShownAtMillis]?.let(Instant::ofEpochMilli),
             lastDrinkAt = preferences[Keys.lastDrinkAtMillis]?.let(Instant::ofEpochMilli),
@@ -147,6 +149,12 @@ class ReminderRepository(context: Context) {
         }
     }
 
+    suspend fun setRespectSilentMode(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.respectSilentMode] = enabled
+        }
+    }
+
     suspend fun setNextReminder(nextReminderAt: Instant?) {
         dataStore.edit { preferences ->
             if (nextReminderAt == null) {
@@ -190,6 +198,7 @@ class ReminderRepository(context: Context) {
         val intervalMinutes = longPreferencesKey("interval_minutes")
         val snoozeMinutes = longPreferencesKey("snooze_minutes")
         val dailyGoal = intPreferencesKey("daily_goal")
+        val respectSilentMode = booleanPreferencesKey("respect_silent_mode")
         val nextReminderAtMillis = longPreferencesKey("next_reminder_at_millis")
         val lastShownAtMillis = longPreferencesKey("last_shown_at_millis")
         val lastDrinkAtMillis = longPreferencesKey("last_drink_at_millis")
