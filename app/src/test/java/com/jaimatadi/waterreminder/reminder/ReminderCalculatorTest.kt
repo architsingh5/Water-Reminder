@@ -64,6 +64,19 @@ class ReminderCalculatorTest {
         assertEquals(at(10, 45), next)
     }
 
+    @Test
+    fun normalizeTruncatesSecondsInsideActiveWindow() {
+        val candidate = ZonedDateTime.of(
+            LocalDate.of(2026, 7, 4),
+            LocalTime.of(10, 15, 42, 500_000_000),
+            zone
+        )
+
+        val next = ReminderCalculator.normalize(candidate, config)
+
+        assertEquals(at(10, 15), next)
+    }
+
     private fun at(hour: Int, minute: Int): ZonedDateTime {
         return ZonedDateTime.of(LocalDate.of(2026, 7, 4), LocalTime.of(hour, minute), zone)
     }

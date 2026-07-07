@@ -8,37 +8,63 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import com.jaimatadi.waterreminder.reminder.ReminderActions
 import com.jaimatadi.waterreminder.reminder.ReminderReceiver
+import com.jaimatadi.waterreminder.ui.theme.WaterTheme
 
 class AlarmActivity : ComponentActivity() {
     private var alarmPlayer: MediaPlayer? = null
     private var isFloating = false
+    private val soundTimeoutHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         isFloating = !intent.getBooleanExtra(EXTRA_LOCKED, true)
@@ -66,7 +92,7 @@ class AlarmActivity : ComponentActivity() {
         startAlarmSound()
 
         setContent {
-            MaterialTheme {
+            WaterTheme {
                 AlarmScreen(
                     floating = isFloating,
                     onDrank = { sendReminderAction(ReminderActions.Drank) },
@@ -75,6 +101,14 @@ class AlarmActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // A new reminder fired while this alarm was still showing: ring again.
+        stopAlarmSound()
+        startAlarmSound()
     }
 
     override fun onStop() {
@@ -97,6 +131,11 @@ class AlarmActivity : ComponentActivity() {
 
     private fun startAlarmSound() {
         if (alarmPlayer != null) return
+
+        // Ringing forever drains the battery and is hostile when the phone is
+        // out of reach; the card itself stays up so the reminder is not lost.
+        soundTimeoutHandler.removeCallbacksAndMessages(null)
+        soundTimeoutHandler.postDelayed({ stopAlarmSound() }, SOUND_TIMEOUT_MILLIS)
 
         for (candidate in alarmSoundCandidates()) {
             val player = runCatching {
@@ -129,6 +168,7 @@ class AlarmActivity : ComponentActivity() {
     }
 
     private fun stopAlarmSound() {
+        soundTimeoutHandler.removeCallbacksAndMessages(null)
         alarmPlayer?.run {
             if (isPlaying) {
                 stop()
@@ -149,6 +189,7 @@ class AlarmActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_LOCKED = "locked"
+        private const val SOUND_TIMEOUT_MILLIS = 60_000L
     }
 }
 
@@ -177,7 +218,18 @@ private fun AlarmScreen(
             }
         }
     } else {
-        Surface(color = MaterialTheme.colorScheme.primaryContainer) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.background,
+                        )
+                    )
+                )
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -185,6 +237,10 @@ private fun AlarmScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                PulsingDrop()
+                Spacer(Modifier.height(20.dp))
+                CurrentTime()
+                Spacer(Modifier.height(8.dp))
                 AlarmContent(
                     onDrank = onDrank,
                     onSnooze = onSnooze,
@@ -195,6 +251,50 @@ private fun AlarmScreen(
             }
         }
     }
+}
+
+@Composable
+private fun PulsingDrop() {
+    val transition = rememberInfiniteTransition(label = "dropPulse")
+    val scale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dropScale"
+    )
+    Box(
+        modifier = Modifier
+            .size(110.dp)
+            .scale(scale)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_water_drop),
+            contentDescription = null,
+            modifier = Modifier.size(56.dp)
+        )
+    }
+}
+
+@Composable
+private fun CurrentTime() {
+    var time by remember { mutableStateOf(LocalTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            time = LocalTime.now()
+            delay(1_000)
+        }
+    }
+    Text(
+        text = time.format(DateTimeFormatter.ofPattern("HH:mm")),
+        style = MaterialTheme.typography.displayMedium,
+        color = MaterialTheme.colorScheme.onBackground
+    )
 }
 
 @Composable

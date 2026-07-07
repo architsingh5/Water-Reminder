@@ -4,8 +4,10 @@ Native Android water reminder app for configurable awake hours, snooze, skip, an
 
 ## Behavior
 
-- Configure day start, day end, reminder interval, and snooze duration.
+- Configure day start, day end, reminder interval, snooze duration, and a daily glass goal.
 - Enable reminders from the home screen.
+- Home screen shows an animated goal progress ring, a live countdown to the next reminder, and a tappable last-7-days chart.
+- Home screen widget shows today's progress and next reminder, with a one-tap log button.
 - `Drank` records water intake and schedules the next reminder from the confirmation time.
 - `Snooze` delays the current reminder without recording intake.
 - `Skip` dismisses the current reminder and schedules the next reminder from the skip time.
@@ -13,7 +15,8 @@ Native Android water reminder app for configurable awake hours, snooze, skip, an
 - Reminders outside awake hours are moved to the next valid day start.
 - Date-wise analytics show daily drank, reminder, and skipped counts.
 - `Reset today` clears only the current day's visible metrics.
-- Reminder alerts open a full-screen alarm-style screen, play an alarm sound, and treat swipe-dismiss as skip so the next reminder advances.
+- Reminder alerts open a full-screen alarm-style screen, play an alarm sound (auto-silenced after 60 seconds), and treat swipe-dismiss as skip so the next reminder advances.
+- Light and dark themes follow the system setting, including the widget.
 
 Example: with a 60-minute interval, if a 10:00 reminder is snoozed for 15 minutes and `Drank` is tapped at 10:15, the next reminder is scheduled for 11:15.
 

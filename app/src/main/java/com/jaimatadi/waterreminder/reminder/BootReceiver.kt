@@ -45,6 +45,9 @@ class BootReceiver : BroadcastReceiver() {
                     }
                 }
             } finally {
+                runCatching {
+                    com.jaimatadi.waterreminder.widget.WaterWidgetProvider.requestUpdate(appContext)
+                }
                 pendingResult.finish()
             }
         }

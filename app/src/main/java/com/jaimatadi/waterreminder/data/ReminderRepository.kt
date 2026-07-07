@@ -25,6 +25,7 @@ data class ReminderState(
     val dayEnd: LocalTime = LocalTime.of(23, 0),
     val intervalMinutes: Long = 60,
     val snoozeMinutes: Long = 15,
+    val dailyGoal: Int = 8,
     val nextReminderAt: Instant? = null,
     val lastShownAt: Instant? = null,
     val lastDrinkAt: Instant? = null,
@@ -66,6 +67,7 @@ class ReminderRepository(context: Context) {
             dayEnd = minutesToTime(preferences[Keys.dayEndMinutes] ?: 1380),
             intervalMinutes = preferences[Keys.intervalMinutes] ?: 60L,
             snoozeMinutes = preferences[Keys.snoozeMinutes] ?: 15L,
+            dailyGoal = preferences[Keys.dailyGoal] ?: 8,
             nextReminderAt = preferences[Keys.nextReminderAtMillis]?.let(Instant::ofEpochMilli),
             lastShownAt = preferences[Keys.lastShownAtMillis]?.let(Instant::ofEpochMilli),
             lastDrinkAt = preferences[Keys.lastDrinkAtMillis]?.let(Instant::ofEpochMilli),
@@ -93,16 +95,19 @@ class ReminderRepository(context: Context) {
         dayEnd: LocalTime,
         intervalMinutes: Long,
         snoozeMinutes: Long,
+        dailyGoal: Int,
     ) {
         require(dayStart != dayEnd) { "Start and end time must differ" }
         require(intervalMinutes > 0) { "Interval must be positive" }
         require(snoozeMinutes > 0) { "Snooze duration must be positive" }
+        require(dailyGoal > 0) { "Daily goal must be positive" }
 
         dataStore.edit { preferences ->
             preferences[Keys.dayStartMinutes] = timeToMinutes(dayStart)
             preferences[Keys.dayEndMinutes] = timeToMinutes(dayEnd)
             preferences[Keys.intervalMinutes] = intervalMinutes
             preferences[Keys.snoozeMinutes] = snoozeMinutes
+            preferences[Keys.dailyGoal] = dailyGoal
         }
     }
 
@@ -184,6 +189,7 @@ class ReminderRepository(context: Context) {
         val dayEndMinutes = intPreferencesKey("day_end_minutes")
         val intervalMinutes = longPreferencesKey("interval_minutes")
         val snoozeMinutes = longPreferencesKey("snooze_minutes")
+        val dailyGoal = intPreferencesKey("daily_goal")
         val nextReminderAtMillis = longPreferencesKey("next_reminder_at_millis")
         val lastShownAtMillis = longPreferencesKey("last_shown_at_millis")
         val lastDrinkAtMillis = longPreferencesKey("last_drink_at_millis")

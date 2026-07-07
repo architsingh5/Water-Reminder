@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.jaimatadi.waterreminder.data.ReminderRepository
+import com.jaimatadi.waterreminder.widget.WaterWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -20,6 +21,7 @@ class ReminderReceiver : BroadcastReceiver() {
             } catch (t: Throwable) {
                 runCatching { fallbackReschedule(appContext) }
             } finally {
+                runCatching { WaterWidgetProvider.requestUpdate(appContext) }
                 pendingResult.finish()
             }
         }

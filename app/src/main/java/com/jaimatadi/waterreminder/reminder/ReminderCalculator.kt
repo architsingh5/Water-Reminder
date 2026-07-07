@@ -37,7 +37,7 @@ object ReminderCalculator {
         require(config.dayStart != config.dayEnd) { "dayStart and dayEnd must differ" }
 
         if (isInsideActiveWindow(candidate.toLocalTime(), config)) {
-            return candidate
+            return candidate.withSecond(0).withNano(0)
         }
 
         val time = candidate.toLocalTime()
