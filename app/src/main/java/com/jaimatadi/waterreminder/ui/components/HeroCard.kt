@@ -1,11 +1,25 @@
 package com.jaimatadi.waterreminder.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,17 +47,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +68,7 @@ import com.jaimatadi.waterreminder.R
 import com.jaimatadi.waterreminder.data.ReminderState
 import com.jaimatadi.waterreminder.ui.PauseOption
 import com.jaimatadi.waterreminder.ui.TimeFormat
+import com.jaimatadi.waterreminder.ui.theme.LocalWaterPalette
 import com.jaimatadi.waterreminder.ui.theme.heroGradient
 import kotlinx.coroutines.delay
 import java.time.Duration
@@ -65,8 +83,8 @@ fun HeroCard(
     onResume: () -> Unit,
     onResetToday: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val onHero = scheme.onPrimary
+    val palette = LocalWaterPalette.current
+    val onHero = palette.onHero
     val paused = state.isPausedAt(Instant.now())
 
     Box(
@@ -100,7 +118,7 @@ fun HeroCard(
                     checked = state.enabled,
                     onCheckedChange = onToggle,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = scheme.primary,
+                        checkedThumbColor = palette.heroStart,
                         checkedTrackColor = onHero,
                         uncheckedThumbColor = onHero,
                         uncheckedTrackColor = onHero.copy(alpha = 0.25f),
@@ -132,7 +150,8 @@ fun HeroCard(
                             streak.current == 1 -> "1-day streak"
                             else -> "${streak.current}-day streak"
                         },
-                        supporting = if (streak.best > streak.current) "best ${streak.best}" else null
+                        supporting = if (streak.best > streak.current) "best ${streak.best}" else null,
+                        pulse = streak.current > 0,
                     )
                 }
             }
@@ -142,21 +161,7 @@ fun HeroCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = onLogWater,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = onHero,
-                        contentColor = scheme.primary
-                    )
-                ) {
-                    AppIcon(R.drawable.ic_water_drop, tint = scheme.primary, size = 18.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Log water", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                }
+                LogWaterButton(onClick = onLogWater, modifier = Modifier.weight(1f))
                 PauseButton(
                     enabled = state.enabled,
                     paused = paused,
@@ -166,6 +171,36 @@ fun HeroCard(
                 HeroIconButton(R.drawable.ic_refresh, "Reset today", onClick = onResetToday)
             }
         }
+    }
+}
+
+/** Primary action; squishes slightly while pressed so the tap feels physical. */
+@Composable
+private fun LogWaterButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val palette = LocalWaterPalette.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.95f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "logPress"
+    )
+
+    Button(
+        onClick = onClick,
+        interactionSource = interaction,
+        modifier = modifier
+            .height(52.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale },
+        shape = RoundedCornerShape(18.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = palette.onHero,
+            contentColor = palette.heroStart
+        )
+    ) {
+        AppIcon(R.drawable.ic_water_drop, tint = palette.heroStart, size = 18.dp)
+        Spacer(Modifier.width(8.dp))
+        Text("Log water", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -205,7 +240,7 @@ private fun HeroIconButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
-    val onHero = MaterialTheme.colorScheme.onPrimary
+    val onHero = LocalWaterPalette.current.onHero
     FilledTonalIconButton(
         onClick = onClick,
         enabled = enabled,
@@ -224,8 +259,19 @@ private fun HeroIconButton(
 }
 
 @Composable
-private fun StatPill(id: Int, text: String, supporting: String? = null) {
-    val onHero = MaterialTheme.colorScheme.onPrimary
+private fun StatPill(id: Int, text: String, supporting: String? = null, pulse: Boolean = false) {
+    val onHero = LocalWaterPalette.current.onHero
+    val iconScale = if (pulse) {
+        val transition = rememberInfiniteTransition(label = "pillPulse")
+        val value by transition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.18f,
+            animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+            label = "pillPulseScale"
+        )
+        value
+    } else 1f
+
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
@@ -233,7 +279,7 @@ private fun StatPill(id: Int, text: String, supporting: String? = null) {
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AppIcon(id, tint = onHero, size = 16.dp)
+        AppIcon(id, tint = onHero, size = 16.dp, modifier = Modifier.scale(iconScale))
         Spacer(Modifier.width(8.dp))
         Text(
             text,
@@ -288,12 +334,13 @@ private fun nextReminderText(state: ReminderState, clock: (Instant) -> String): 
 
 /**
  * Goal ring with animated water rising inside it. The water level and the arc
- * both track today's progress; at the goal the arc turns tertiary and shows a check.
+ * both track today's progress; at the goal the arc switches to the goal accent
+ * and a check pops in. Each new glass sends a ripple outwards from the ring.
  */
 @Composable
 private fun WaterRing(drinks: Int, goal: Int) {
-    val scheme = MaterialTheme.colorScheme
-    val onHero = scheme.onPrimary
+    val palette = LocalWaterPalette.current
+    val onHero = palette.onHero
     val progress = if (goal > 0) drinks.toFloat() / goal else 0f
     val goalDone = drinks >= goal && goal > 0
 
@@ -303,7 +350,19 @@ private fun WaterRing(drinks: Int, goal: Int) {
         label = "goalArc"
     )
     val shownCount by animateIntAsState(targetValue = drinks, animationSpec = tween(500), label = "count")
-    val ringColor = if (goalDone) scheme.tertiaryContainer else onHero
+    val ringColor = if (goalDone) palette.goalAccent else onHero
+
+    // Ripple: 0 = idle, runs 0→1 whenever the count goes up.
+    val ripple = remember { Animatable(0f) }
+    var lastDrinks by remember { mutableIntStateOf(drinks) }
+    LaunchedEffect(drinks) {
+        if (drinks > lastDrinks) {
+            ripple.snapTo(0.01f)
+            ripple.animateTo(1f, tween(durationMillis = 750))
+            ripple.snapTo(0f)
+        }
+        lastDrinks = drinks
+    }
 
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
         // Water inside the ring.
@@ -345,11 +404,23 @@ private fun WaterRing(drinks: Int, goal: Int) {
                     style = Stroke(width = stroke, cap = StrokeCap.Round)
                 )
             }
+            val r = ripple.value
+            if (r > 0f) {
+                drawCircle(
+                    color = onHero.copy(alpha = (1f - r) * 0.6f),
+                    radius = size.minDimension / 2 * (0.75f + 0.45f * r),
+                    style = Stroke(width = 3.dp.toPx() * (1f - r) + 1.dp.toPx())
+                )
+            }
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            if (goalDone) {
-                AppIcon(R.drawable.ic_check, tint = onHero, size = 22.dp)
+            AnimatedVisibility(
+                visible = goalDone,
+                enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
+                AppIcon(R.drawable.ic_check, tint = palette.goalAccent, size = 22.dp)
             }
             Text(
                 shownCount.toString(),

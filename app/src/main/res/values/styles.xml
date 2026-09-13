@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- System bars are transparent: the app draws edge-to-edge and Compose
-         handles the insets, so the gradient/background shows behind them. -->
+         handles the insets. Window backgrounds match the Compose palettes so
+         there's no flash before the first frame. -->
     <style name="Theme.WaterReminder" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowBackground">#F2F7FC</item>
+        <item name="android:windowBackground">#F6FAFB</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <style name="Theme.WaterReminder.Alarm" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowBackground">#D3E9F9</item>
+        <item name="android:windowBackground">#CCF3F8</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>

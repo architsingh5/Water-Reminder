@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.jaimatadi.waterreminder.data.AlertStyle
 import com.jaimatadi.waterreminder.data.ReminderRepository
 import com.jaimatadi.waterreminder.data.ReminderState
+import com.jaimatadi.waterreminder.data.ThemeMode
 import com.jaimatadi.waterreminder.reminder.ReminderCalculator
 import com.jaimatadi.waterreminder.reminder.ReminderReconciler
 import com.jaimatadi.waterreminder.reminder.ReminderScheduler
@@ -198,6 +199,12 @@ class ReminderViewModel(
     fun setDynamicColor(enabled: Boolean) {
         viewModelScope.launch {
             repository.setDynamicColor(enabled)
+        }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            repository.setThemeMode(mode)
         }
     }
 

@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.jaimatadi.waterreminder.R
 import com.jaimatadi.waterreminder.data.AlertStyle
 import com.jaimatadi.waterreminder.data.ReminderState
+import com.jaimatadi.waterreminder.data.ThemeMode
 import com.jaimatadi.waterreminder.ui.TimeFormat
 import com.jaimatadi.waterreminder.ui.theme.supportsDynamicColor
 import java.time.LocalTime
@@ -81,6 +82,7 @@ fun SettingsCard(
     onRespectSilentChange: (Boolean) -> Unit,
     onAlertStyleChange: (AlertStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
 ) {
     var pickingStart by remember { mutableStateOf(false) }
     var pickingEnd by remember { mutableStateOf(false) }
@@ -127,7 +129,7 @@ fun SettingsCard(
 
     // These apply immediately: they change how alerts look, not when they fire,
     // so nothing needs rescheduling.
-    SectionCard(title = "Alerts & look", modifier = Modifier.animateContentSize()) {
+    SectionCard(title = "Alerts", modifier = Modifier.animateContentSize()) {
         SettingRow(icon = R.drawable.ic_bell, label = "Alert style", supporting = "How a reminder gets your attention") {}
         AlertStyleSelector(selected = state.alertStyle, onSelect = onAlertStyleChange)
 
@@ -143,13 +145,18 @@ fun SettingsCard(
                 }
             }
         }
+    }
+
+    SectionCard(title = "Appearance", modifier = Modifier.animateContentSize()) {
+        SettingRow(icon = R.drawable.ic_palette, label = "Theme", supporting = "Dark uses pure black for OLED screens") {}
+        ThemeModeSelector(selected = state.themeMode, onSelect = onThemeModeChange)
 
         if (supportsDynamicColor()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             SettingRow(
                 icon = R.drawable.ic_palette,
                 label = "Wallpaper colors",
-                supporting = "Use your phone's Material You palette"
+                supporting = "Use your phone's Material You palette instead of aqua"
             ) {
                 Switch(checked = state.dynamicColor, onCheckedChange = onDynamicColorChange)
             }
@@ -178,6 +185,22 @@ private fun formatMinutes(minutes: Long): String = when {
     minutes % 60 == 0L -> "${minutes / 60} h"
     minutes > 60 -> "${minutes / 60} h ${minutes % 60} min"
     else -> "$minutes min"
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ThemeModeSelector(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    val options = ThemeMode.entries
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = mode == selected,
+                onClick = { onSelect(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                label = { Text(mode.label) }
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

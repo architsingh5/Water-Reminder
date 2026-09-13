@@ -11,6 +11,8 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
@@ -175,8 +177,13 @@ fun HomeScreen(viewModel: ReminderViewModel) {
                     .padding(horizontal = 18.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Cards fade and rise in one after another on first show.
+                var entered by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { entered = true }
+
                 Header(today = state.todayDate)
 
+                Enter(entered, order = 0) {
                 HeroCard(
                     state = state,
                     onToggle = { on ->
@@ -200,7 +207,9 @@ fun HomeScreen(viewModel: ReminderViewModel) {
                     onResume = viewModel::resumeReminders,
                     onResetToday = { showResetDialog = true },
                 )
-                WeekChartCard(state)
+                }
+                Enter(entered, order = 1) { WeekChartCard(state) }
+                Enter(entered, order = 2) {
                 SettingsCard(
                     state = state,
                     draft = draft,
@@ -208,7 +217,10 @@ fun HomeScreen(viewModel: ReminderViewModel) {
                     onRespectSilentChange = viewModel::setRespectSilentMode,
                     onAlertStyleChange = viewModel::setAlertStyle,
                     onDynamicColorChange = viewModel::setDynamicColor,
+                    onThemeModeChange = viewModel::setThemeMode,
                 )
+                }
+                Enter(entered, order = 3) {
                 ReliabilityCard(
                     hasNotificationPermission = hasNotificationPermission,
                     notificationPermissionPermanentlyDenied = notificationPermissionPermanentlyDenied,
@@ -230,6 +242,7 @@ fun HomeScreen(viewModel: ReminderViewModel) {
                         context.startActivity(viewModel.fullScreenIntentSettingsIntent())
                     }
                 )
+                }
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -250,6 +263,19 @@ fun HomeScreen(viewModel: ReminderViewModel) {
                 TextButton(onClick = { showResetDialog = false }) { Text("Cancel") }
             }
         )
+    }
+}
+
+/** Staggered entrance wrapper: each card starts 90 ms after the previous one. */
+@Composable
+private fun Enter(visible: Boolean, order: Int, content: @Composable () -> Unit) {
+    val delay = order * 90
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(420, delayMillis = delay)) +
+            slideInVertically(tween(420, delayMillis = delay)) { it / 5 },
+    ) {
+        content()
     }
 }
 

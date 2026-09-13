@@ -21,8 +21,8 @@
                 android:startY="25.05"
                 android:endX="54"
                 android:endY="82.92"
-                android:startColor="#60A5FA"
-                android:endColor="#1D4ED8" />
+                android:startColor="#67E8F9"
+                android:endColor="#0E7490" />
         </aapt:attr>
     </path>
     <!-- Glossy highlight -->

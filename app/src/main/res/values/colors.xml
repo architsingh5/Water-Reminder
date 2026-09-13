@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#DBEAFE</color>
+    <color name="ic_launcher_background">#CFFAFE</color>
 
-    <color name="widget_background">#F0F7FF</color>
-    <color name="widget_text_primary">#0B2A4A</color>
-    <color name="widget_text_secondary">#4A6B8A</color>
-    <color name="widget_accent">#1E88D2</color>
+    <!-- "Aqua Day" widget palette; the night folder holds the OLED variant. -->
+    <color name="widget_background">#FFFFFF</color>
+    <color name="widget_text_primary">#0F1B1E</color>
+    <color name="widget_text_secondary">#4B6168</color>
+    <color name="widget_accent">#0A7C8E</color>
     <color name="widget_on_accent">#FFFFFF</color>
-    <color name="widget_progress_track">#C9E2F5</color>
+    <color name="widget_progress_track">#CCF3F8</color>
 
     <!-- Material You variant; overridden in values-v31. Below Android 12 these
          simply mirror the brand palette so the dynamic layout still renders. -->

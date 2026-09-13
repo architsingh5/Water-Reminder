@@ -2,14 +2,14 @@
 <resources>
     <style name="Theme.WaterReminder" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowBackground">#0C1924</item>
+        <item name="android:windowBackground">#000000</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <style name="Theme.WaterReminder.Alarm" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowBackground">#124A72</item>
+        <item name="android:windowBackground">#041E24</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>

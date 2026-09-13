@@ -32,6 +32,17 @@ enum class AlertStyle(val storedValue: String) {
     }
 }
 
+enum class ThemeMode(val storedValue: String, val label: String) {
+    System("system", "System"),
+    Light("light", "Light"),
+    Dark("dark", "Dark");
+
+    companion object {
+        fun fromStored(value: String?): ThemeMode =
+            entries.firstOrNull { it.storedValue == value } ?: System
+    }
+}
+
 data class ReminderState(
     val enabled: Boolean = false,
     val dayStart: LocalTime = LocalTime.of(7, 0),
@@ -42,6 +53,7 @@ data class ReminderState(
     val respectSilentMode: Boolean = false,
     val alertStyle: AlertStyle = AlertStyle.Alarm,
     val dynamicColor: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.System,
     val pausedUntil: Instant? = null,
     val nextReminderAt: Instant? = null,
     val lastShownAt: Instant? = null,
@@ -93,6 +105,7 @@ class ReminderRepository(context: Context) {
             respectSilentMode = preferences[Keys.respectSilentMode] ?: false,
             alertStyle = AlertStyle.fromStored(preferences[Keys.alertStyle]),
             dynamicColor = preferences[Keys.dynamicColor] ?: false,
+            themeMode = ThemeMode.fromStored(preferences[Keys.themeMode]),
             pausedUntil = preferences[Keys.pausedUntilMillis]?.let(Instant::ofEpochMilli),
             nextReminderAt = preferences[Keys.nextReminderAtMillis]?.let(Instant::ofEpochMilli),
             lastShownAt = preferences[Keys.lastShownAtMillis]?.let(Instant::ofEpochMilli),
@@ -206,6 +219,12 @@ class ReminderRepository(context: Context) {
         }
     }
 
+    suspend fun setThemeMode(mode: ThemeMode) {
+        dataStore.edit { preferences ->
+            preferences[Keys.themeMode] = mode.storedValue
+        }
+    }
+
     suspend fun setPausedUntil(pausedUntil: Instant?) {
         dataStore.edit { preferences ->
             if (pausedUntil == null) {
@@ -262,6 +281,7 @@ class ReminderRepository(context: Context) {
         val respectSilentMode = booleanPreferencesKey("respect_silent_mode")
         val alertStyle = stringPreferencesKey("alert_style")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
+        val themeMode = stringPreferencesKey("theme_mode")
         val pausedUntilMillis = longPreferencesKey("paused_until_millis")
         val nextReminderAtMillis = longPreferencesKey("next_reminder_at_millis")
         val lastShownAtMillis = longPreferencesKey("last_shown_at_millis")

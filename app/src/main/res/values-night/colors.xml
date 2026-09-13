@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_background">#12212F</color>
-    <color name="widget_text_primary">#E4F1FB</color>
-    <color name="widget_text_secondary">#93B2CC</color>
-    <color name="widget_accent">#4FA8E8</color>
-    <color name="widget_on_accent">#06263F</color>
-    <color name="widget_progress_track">#24405A</color>
+    <!-- "OLED Night": near-black card with a cyan accent. -->
+    <color name="widget_background">#0D0F10</color>
+    <color name="widget_text_primary">#F2F5F6</color>
+    <color name="widget_text_secondary">#9AA9AE</color>
+    <color name="widget_accent">#2EDDF5</color>
+    <color name="widget_on_accent">#003640</color>
+    <color name="widget_progress_track">#1A1E20</color>
 </resources>

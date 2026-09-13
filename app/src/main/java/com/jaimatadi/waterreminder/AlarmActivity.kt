@@ -123,7 +123,7 @@ class AlarmActivity : ComponentActivity() {
         val repository = ReminderRepository(applicationContext)
         setContent {
             val state by repository.state.collectAsState(initial = ReminderState())
-            WaterTheme(dynamicColor = state.dynamicColor) {
+            WaterTheme(themeMode = state.themeMode, dynamicColor = state.dynamicColor) {
                 AlarmScreen(
                     floating = isFloating,
                     state = state,
