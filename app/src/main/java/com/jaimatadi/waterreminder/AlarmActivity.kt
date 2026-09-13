@@ -24,27 +24,26 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,13 +56,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.jaimatadi.waterreminder.data.ReminderRepository
@@ -71,8 +73,12 @@ import com.jaimatadi.waterreminder.data.ReminderState
 import com.jaimatadi.waterreminder.reminder.ReminderActions
 import com.jaimatadi.waterreminder.reminder.ReminderReceiver
 import com.jaimatadi.waterreminder.ui.TimeFormat
+import com.jaimatadi.waterreminder.ui.components.AppIcon
 import com.jaimatadi.waterreminder.ui.components.WaterWaves
+import com.jaimatadi.waterreminder.ui.theme.LocalWaterPalette
+import com.jaimatadi.waterreminder.ui.theme.SerifDisplay
 import com.jaimatadi.waterreminder.ui.theme.WaterTheme
+import com.jaimatadi.waterreminder.ui.theme.heroGradient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalTime
@@ -124,13 +130,21 @@ class AlarmActivity : ComponentActivity() {
         setContent {
             val state by repository.state.collectAsState(initial = ReminderState())
             WaterTheme(themeMode = state.themeMode, dynamicColor = state.dynamicColor) {
-                AlarmScreen(
-                    floating = isFloating,
-                    state = state,
-                    onDrank = { sendReminderAction(ReminderActions.Drank) },
-                    onSnooze = { sendReminderAction(ReminderActions.Snooze) },
-                    onSkip = { sendReminderAction(ReminderActions.Skip) },
-                )
+                if (isFloating) {
+                    FloatingAlarmCard(
+                        state = state,
+                        onDrank = { sendReminderAction(ReminderActions.Drank) },
+                        onSnooze = { sendReminderAction(ReminderActions.Snooze) },
+                        onSkip = { sendReminderAction(ReminderActions.Skip) },
+                    )
+                } else {
+                    FullScreenAlarm(
+                        state = state,
+                        onDrank = { sendReminderAction(ReminderActions.Drank) },
+                        onSnooze = { sendReminderAction(ReminderActions.Snooze) },
+                        onSkip = { sendReminderAction(ReminderActions.Skip) },
+                    )
+                }
             }
         }
     }
@@ -254,141 +268,248 @@ class AlarmActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Full-screen alarm from the design: label, big serif clock, a pulsing drop
+ * badge, title + progress, Drank pill with glow, Snooze / Skip text actions,
+ * and layered waves rising along the bottom third of the screen.
+ */
 @Composable
-private fun AlarmScreen(
-    floating: Boolean,
+private fun FullScreenAlarm(
     state: ReminderState,
     onDrank: () -> Unit,
     onSnooze: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    val progressText = "${state.drinksToday} of ${state.dailyGoal} glasses today"
-
-    if (floating) {
-        Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    DropBadge(size = 44.dp, iconSize = 24.dp)
-                    Spacer(Modifier.width(14.dp))
-                    Column {
-                        Text(
-                            "Time to drink water",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            progressText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                AlarmActions(
-                    onDrank = onDrank,
-                    onSnooze = onSnooze,
-                    onSkip = onSkip,
-                    modifier = Modifier.padding(20.dp),
-                )
-            }
-        }
-        return
-    }
-
     val scheme = MaterialTheme.colorScheme
-    Box(
+    val palette = LocalWaterPalette.current
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(listOf(scheme.primaryContainer, scheme.background))
-            )
+            .background(scheme.background)
     ) {
-        // Water rising along the bottom of the screen: the more of today's goal
-        // is done, the higher it sits.
+        val screenHeight = maxHeight
+
+        // Soft radial glow behind the clock and badge.
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val radius = 210.dp.toPx()
+            val center = Offset(size.width / 2, 150.dp.toPx() + radius)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(scheme.primary.copy(alpha = 0.16f), scheme.primary.copy(alpha = 0f)),
+                    center = center,
+                    radius = radius
+                ),
+                radius = radius,
+                center = center
+            )
+        }
+
+        // Waves along the bottom third.
         WaterWaves(
-            progress = 0.18f + 0.3f * (state.drinksToday.toFloat() / state.dailyGoal.coerceAtLeast(1)).coerceIn(0f, 1f),
-            color = scheme.primary.copy(alpha = 0.22f),
-            backColor = scheme.primary.copy(alpha = 0.12f),
-            modifier = Modifier.fillMaxSize()
+            progress = 0.9f,
+            color = palette.heroStart.copy(alpha = 0.9f),
+            backColor = palette.heroEnd.copy(alpha = 0.5f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(screenHeight * 0.34f)
+                .align(Alignment.BottomCenter)
         )
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 28.dp, vertical = 40.dp),
-            verticalArrangement = Arrangement.Center,
+                .padding(start = 24.dp, end = 24.dp, top = 36.dp, bottom = 36.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            PulsingDrop()
-            Spacer(Modifier.height(24.dp))
+            Text(
+                "REMINDER",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+                color = scheme.onSurfaceVariant
+            )
             CurrentTime()
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(44.dp))
+            PulsingBadge()
+            Spacer(Modifier.height(32.dp))
             Text(
                 "Time to drink water",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-0.4).sp,
                 textAlign = TextAlign.Center,
                 color = scheme.onBackground
             )
             Text(
-                progressText,
-                modifier = Modifier.padding(top = 6.dp),
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
+                "${state.drinksToday} of ${state.dailyGoal} glasses today",
+                modifier = Modifier.padding(top = 8.dp),
+                fontSize = 14.5.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = scheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(36.dp))
-            AlarmActions(onDrank = onDrank, onSnooze = onSnooze, onSkip = onSkip)
+            Spacer(Modifier.weight(1f))
+            DrankButton(onClick = onDrank, height = 60.dp, fontSize = 18)
+            Row(
+                modifier = Modifier.padding(top = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(36.dp)
+            ) {
+                TextAction("Snooze ${state.snoozeMinutes} min", color = scheme.primary, onClick = onSnooze)
+                TextAction("Skip", color = scheme.onSurfaceVariant, onClick = onSkip)
+            }
+        }
+    }
+}
+
+/** Compact card used when the phone is already unlocked and in use. */
+@Composable
+private fun FloatingAlarmCard(
+    state: ReminderState,
+    onDrank: () -> Unit,
+    onSnooze: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val palette = LocalWaterPalette.current
+    val shape = RoundedCornerShape(24.dp)
+
+    Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(16.dp, shape, ambientColor = palette.glow, spotColor = palette.glow)
+                .clip(shape)
+                .background(scheme.surface)
+                .border(1.dp, palette.cardBorder, shape)
+                .padding(20.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DropBadge(size = 44.dp, iconSize = 22.dp)
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        "Time to drink water",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = scheme.onSurface
+                    )
+                    Text(
+                        "${state.drinksToday} of ${state.dailyGoal} glasses today",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = scheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            DrankButton(onClick = onDrank, height = 52.dp, fontSize = 16)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                TextAction("Snooze ${state.snoozeMinutes} min", color = scheme.primary, onClick = onSnooze)
+                Spacer(Modifier.width(24.dp))
+                TextAction("Skip", color = scheme.onSurfaceVariant, onClick = onSkip)
+            }
         }
     }
 }
 
 @Composable
-private fun DropBadge(size: androidx.compose.ui.unit.Dp, iconSize: androidx.compose.ui.unit.Dp) {
-    Box(
+private fun DrankButton(onClick: () -> Unit, height: androidx.compose.ui.unit.Dp, fontSize: Int) {
+    val palette = LocalWaterPalette.current
+    val shape = RoundedCornerShape(20.dp)
+    Row(
         modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .height(height)
+            .shadow(18.dp, shape, ambientColor = palette.glow, spotColor = palette.glow)
+            .clip(shape)
+            .background(palette.logButtonBg)
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_water_drop),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
-            modifier = Modifier.size(iconSize)
-        )
+        AppIcon(R.drawable.ic_water_drop, tint = palette.logButtonFg, size = 20.dp)
+        Spacer(Modifier.width(10.dp))
+        Text("Drank", fontSize = fontSize.sp, fontWeight = FontWeight.ExtraBold, color = palette.logButtonFg)
     }
 }
 
 @Composable
-private fun PulsingDrop() {
-    val transition = rememberInfiniteTransition(label = "dropPulse")
-    val scale by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.12f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "dropScale"
+private fun TextAction(label: String, color: Color, onClick: () -> Unit) {
+    Text(
+        label,
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Bold,
+        color = color
     )
+}
+
+@Composable
+private fun DropBadge(size: androidx.compose.ui.unit.Dp, iconSize: androidx.compose.ui.unit.Dp) {
+    val palette = LocalWaterPalette.current
     Box(
         modifier = Modifier
-            .size(140.dp)
-            .scale(scale)
+            .size(size)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
+            .background(heroGradient)
+            .border(1.dp, palette.ring.copy(alpha = 0.25f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        DropBadge(size = 104.dp, iconSize = 56.dp)
+        AppIcon(R.drawable.ic_water_drop, tint = palette.ring, size = iconSize)
+    }
+}
+
+/** 104 dp badge that breathes (scale 1→1.06) with an expanding glow ring; the drop bobs inside. */
+@Composable
+private fun PulsingBadge() {
+    val palette = LocalWaterPalette.current
+    val transition = rememberInfiniteTransition(label = "badgePulse")
+    val t by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2400), RepeatMode.Reverse),
+        label = "pulseT"
+    )
+    val bob by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = -6f,
+        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Reverse),
+        label = "bob"
+    )
+
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            // Glow ring grows out and fades as the badge swells.
+            val extra = 28.dp.toPx() * t
+            drawCircle(
+                color = palette.ring.copy(alpha = 0.45f * (1f - t)),
+                radius = 52.dp.toPx() + extra,
+                style = Stroke(width = extra.coerceAtLeast(1f))
+            )
+        }
+        Box(modifier = Modifier.scale(1f + 0.06f * t)) {
+            Box(
+                modifier = Modifier
+                    .size(104.dp)
+                    .clip(CircleShape)
+                    .background(heroGradient)
+                    .border(1.dp, palette.ring.copy(alpha = 0.25f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                AppIcon(
+                    R.drawable.ic_water_drop,
+                    tint = palette.ring,
+                    size = 44.dp,
+                    modifier = Modifier.offset(y = bob.dp)
+                )
+            }
+        }
     }
 }
 
@@ -404,55 +525,11 @@ private fun CurrentTime() {
     }
     Text(
         text = TimeFormat.clock(context, time),
-        style = MaterialTheme.typography.displayLarge,
-        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 8.dp),
+        fontFamily = SerifDisplay,
+        fontSize = 80.sp,
+        lineHeight = 80.sp,
+        letterSpacing = (-1).sp,
         color = MaterialTheme.colorScheme.onBackground
     )
-}
-
-@Composable
-private fun AlarmActions(
-    onDrank: () -> Unit,
-    onSnooze: () -> Unit,
-    onSkip: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Button(
-            onClick = onDrank,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(18.dp),
-            contentPadding = ButtonDefaults.ContentPadding
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_check),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text("Drank", style = MaterialTheme.typography.titleMedium)
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedButton(
-                onClick = onSnooze,
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("Snooze")
-            }
-            OutlinedButton(
-                onClick = onSkip,
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("Skip")
-            }
-        }
-    }
 }

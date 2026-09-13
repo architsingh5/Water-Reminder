@@ -4,8 +4,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,20 +19,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.jaimatadi.waterreminder.data.DailyMetrics
 import com.jaimatadi.waterreminder.data.ReminderState
-import com.jaimatadi.waterreminder.ui.theme.chartBarColor
+import com.jaimatadi.waterreminder.ui.theme.LocalWaterPalette
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -51,44 +50,40 @@ fun WeekChartCard(state: ReminderState) {
     val totalDrinks = days.sumOf { it.second.drinks }
     val goalDays = days.count { it.second.drinks >= state.dailyGoal }
     val average = totalDrinks / 7f
+    val scheme = MaterialTheme.colorScheme
 
-    SectionCard(
-        title = "Last 7 days",
-        trailing = {
+    SectionCard(title = "Last 7 days") {
+        Column {
+            WeekBarChart(
+                days = days,
+                goal = state.dailyGoal,
+                selectedIndex = selected,
+                onSelect = { selected = it },
+            )
+            val metrics = days[selected].second
             Text(
-                "goal ${state.dailyGoal}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                "${days[selected].first.format(FullDateFormatter)} — " +
+                    "${metrics.drinks} drank, ${metrics.reminders} reminders, ${metrics.skips} skipped",
+                modifier = Modifier.padding(top = 12.dp),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = scheme.onSurfaceVariant
+            )
+            Text(
+                "Avg ${"%.1f".format(average)} glasses a day · goal met on $goalDays of 7 days",
+                modifier = Modifier.padding(top = 4.dp),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = scheme.onSurfaceVariant
             )
         }
-    ) {
-        WeekBarChart(
-            days = days,
-            goal = state.dailyGoal,
-            selectedIndex = selected,
-            onSelect = { selected = it },
-        )
-
-        val metrics = days[selected].second
-        Text(
-            "${days[selected].first.format(FullDateFormatter)} — " +
-                "${metrics.drinks} drank, ${metrics.reminders} reminders, ${metrics.skips} skipped",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            "Avg ${"%.1f".format(average)} glasses a day · goal met on $goalDays of 7 days",
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
 /**
- * Bars, goal line, value bubble and weekday labels all drawn in one canvas
- * with one coordinate mapping, so the goal line lands exactly at the goal bar
- * height regardless of font scale.
+ * Pill bars (18 dp wide, fully rounded) on a 120 dp plot with a dashed goal
+ * line and its "goal N" tag, a value bubble over the selected bar, and day
+ * letters underneath — all in one canvas so everything shares one scale.
  */
 @Composable
 private fun WeekBarChart(
@@ -98,19 +93,17 @@ private fun WeekBarChart(
     onSelect: (Int) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val barColor = chartBarColor
-    val dimBar = barColor.copy(alpha = 0.35f)
-    val goalLineColor = scheme.onSurfaceVariant.copy(alpha = 0.55f)
-    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = scheme.onSurfaceVariant)
-    val todayLabelStyle = labelStyle.copy(color = scheme.primary, fontWeight = FontWeight.Bold)
-    val bubbleTextStyle = MaterialTheme.typography.labelMedium.copy(
-        color = scheme.onPrimary,
-        fontWeight = FontWeight.SemiBold
-    )
+    val bar = LocalWaterPalette.current.chartBar
+    val bubbleText = scheme.onPrimary
     val textMeasurer = rememberTextMeasurer()
-    val maxValue = maxOf(goal, days.maxOf { it.second.drinks }, 1)
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = scheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+    val goalTagStyle = labelStyle.copy(color = bar, fontSize = 10.sp)
+    val bubbleStyle = labelStyle.copy(color = bubbleText, fontWeight = FontWeight.ExtraBold)
 
-    // Bars grow in when the data set changes (first show, new day).
+    // The design plots against a fixed 12-glass scale so a normal day fills
+    // about two thirds; only grow it when the goal or a big day needs more.
+    val maxValue = maxOf(12, goal, days.maxOf { it.second.drinks })
+
     val dataKey = days.joinToString { "${it.first}:${it.second.drinks}" }
     val reveal = remember(dataKey) { Animatable(0f) }
     LaunchedEffect(dataKey) { reveal.animateTo(1f, tween(600)) }
@@ -118,7 +111,7 @@ private fun WeekBarChart(
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp)
+            .height(22.dp + 120.dp + 8.dp + 16.dp)
             .pointerInput(days.size) {
                 detectTapGestures { offset ->
                     val slot = size.width / days.size.toFloat()
@@ -126,82 +119,62 @@ private fun WeekBarChart(
                 }
             }
     ) {
-        val slotWidth = size.width / days.size
-        val labelHeight = 18.dp.toPx()
-        val labelGap = 8.dp.toPx()
-        val topPadding = 30.dp.toPx() // room for the value bubble
-        val chartBottom = size.height - labelHeight - labelGap
-        val chartHeight = chartBottom - topPadding
-        val minBar = 4.dp.toPx()
+        val topPadding = 22.dp.toPx()
+        val plotHeight = 120.dp.toPx()
+        val chartBottom = topPadding + plotHeight
+        val labelTop = chartBottom + 8.dp.toPx()
+        val sidePadding = 10.dp.toPx()
+        val slotWidth = (size.width - sidePadding * 2) / days.size
+        val barWidth = 18.dp.toPx()
+        val minBar = 6.dp.toPx()
 
-        fun yFor(value: Float): Float = chartBottom - chartHeight * (value / maxValue)
+        fun heightFor(value: Int): Float = maxOf(minBar, plotHeight * value / maxValue)
 
-        // Goal reference line.
-        val goalY = yFor(goal.toFloat())
+        // Goal line + tag.
+        val goalY = chartBottom - minOf(plotHeight, plotHeight * goal / maxValue)
         drawLine(
-            color = goalLineColor,
+            color = bar.copy(alpha = 0.5f),
             start = Offset(0f, goalY),
             end = Offset(size.width, goalY),
-            strokeWidth = 1.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))
+            strokeWidth = 1.5.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))
         )
+        val tag = textMeasurer.measure("goal $goal", goalTagStyle)
+        drawText(tag, topLeft = Offset(size.width - tag.size.width, goalY - 4.dp.toPx() - tag.size.height))
 
         days.forEachIndexed { index, (date, metrics) ->
             val isSelected = index == selectedIndex
-            val centerX = slotWidth * index + slotWidth / 2
-            val barWidth = slotWidth * 0.48f
-            val fullHeight = (chartBottom - yFor(metrics.drinks.toFloat())).coerceAtLeast(minBar)
+            val centerX = sidePadding + slotWidth * index + slotWidth / 2
+            val fullHeight = heightFor(metrics.drinks)
             val barHeight = minBar + (fullHeight - minBar) * reveal.value
             val top = chartBottom - barHeight
-            val color = if (isSelected) barColor else dimBar
 
-            val radius = CornerRadius(barWidth / 2.6f)
-            val bar = Path().apply {
-                addRoundRect(
-                    RoundRect(
-                        rect = Rect(Offset(centerX - barWidth / 2, top), Size(barWidth, barHeight)),
-                        topLeft = radius,
-                        topRight = radius,
-                        bottomLeft = CornerRadius.Zero,
-                        bottomRight = CornerRadius.Zero,
-                    )
-                )
-            }
-            drawPath(
-                path = bar,
-                brush = Brush.verticalGradient(
-                    colors = listOf(color, color.copy(alpha = color.alpha * 0.75f)),
-                    startY = top,
-                    endY = chartBottom
-                )
+            drawRoundRect(
+                color = bar.copy(alpha = if (isSelected) 1f else 0.32f),
+                topLeft = Offset(centerX - barWidth / 2, top),
+                size = Size(barWidth, barHeight),
+                cornerRadius = CornerRadius(barWidth / 2)
             )
 
-            // Weekday label; today is emphasised.
-            val label = date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.getDefault())
-            val labelLayout = textMeasurer.measure(label, if (index == days.lastIndex) todayLabelStyle else labelStyle)
-            drawText(
-                labelLayout,
-                topLeft = Offset(
-                    centerX - labelLayout.size.width / 2f,
-                    size.height - labelHeight + (labelHeight - labelLayout.size.height) / 2f
-                )
-            )
+            val letter = date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.getDefault())
+            val letterLayout = textMeasurer.measure(letter, labelStyle)
+            drawText(letterLayout, topLeft = Offset(centerX - letterLayout.size.width / 2f, labelTop))
 
             if (isSelected) {
-                val valueLayout = textMeasurer.measure(metrics.drinks.toString(), bubbleTextStyle)
+                val value = textMeasurer.measure(metrics.drinks.toString(), bubbleStyle)
                 val padX = 8.dp.toPx()
                 val padY = 3.dp.toPx()
-                val bubbleWidth = valueLayout.size.width + padX * 2
-                val bubbleHeight = valueLayout.size.height + padY * 2
-                val bubbleTop = (top - 8.dp.toPx() - bubbleHeight).coerceAtLeast(0f)
-                val bubbleLeft = (centerX - bubbleWidth / 2).coerceIn(0f, size.width - bubbleWidth)
+                val w = value.size.width + padX * 2
+                val h = value.size.height + padY * 2
+                val bubbleTop = (top - 8.dp.toPx() - h).coerceAtLeast(0f)
+                val bubbleLeft = (centerX - w / 2).coerceIn(0f, size.width - w)
                 drawRoundRect(
-                    color = barColor,
+                    color = bar,
                     topLeft = Offset(bubbleLeft, bubbleTop),
-                    size = Size(bubbleWidth, bubbleHeight),
-                    cornerRadius = CornerRadius(bubbleHeight / 2)
+                    size = Size(w, h),
+                    cornerRadius = CornerRadius(8.dp.toPx())
                 )
-                drawText(valueLayout, topLeft = Offset(bubbleLeft + padX, bubbleTop + padY))
+                drawText(value, topLeft = Offset(bubbleLeft + padX, bubbleTop + padY))
             }
         }
     }

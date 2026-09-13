@@ -15,12 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlin.math.PI
 import kotlin.math.sin
 
 /** Continuously cycling wave phase in radians (0 → 2π), for gentle water motion. */
 @Composable
-fun rememberWavePhase(periodMillis: Int = 2_600): State<Float> {
+fun rememberWavePhase(periodMillis: Int = 3_200): State<Float> {
     val transition = rememberInfiniteTransition(label = "wavePhase")
     return transition.animateFloat(
         initialValue = 0f,
@@ -36,6 +37,7 @@ fun rememberWavePhase(periodMillis: Int = 2_600): State<Float> {
 /**
  * Fills the drawing area from the bottom up to [level] (0..1) with a sine
  * wave surface. Two calls with different phases stacked give a layered look.
+ * [crest] draws a thin highlight along the surface, like the design's stroke.
  */
 fun DrawScope.drawWave(
     level: Float,
@@ -43,29 +45,41 @@ fun DrawScope.drawWave(
     color: Color,
     amplitude: Float = size.height * 0.035f,
     waves: Float = 1.5f,
+    crest: Color? = null,
+    crestWidth: Float = 2f,
 ) {
     val clamped = level.coerceIn(0f, 1f)
     val surfaceY = size.height * (1f - clamped)
-    val path = Path()
-    path.moveTo(0f, size.height)
-    path.lineTo(0f, surfaceY)
+    val surface = Path()
+    val fill = Path()
+    fill.moveTo(0f, size.height)
 
     val steps = 48
     for (i in 0..steps) {
         val x = size.width * i / steps
         val angle = (x / size.width) * waves * 2f * PI.toFloat() + phase
         val y = surfaceY + sin(angle) * amplitude
-        path.lineTo(x, y)
+        if (i == 0) {
+            surface.moveTo(x, y)
+            fill.lineTo(x, y)
+        } else {
+            surface.lineTo(x, y)
+            fill.lineTo(x, y)
+        }
     }
 
-    path.lineTo(size.width, size.height)
-    path.close()
-    drawPath(path, color)
+    fill.lineTo(size.width, size.height)
+    fill.close()
+    drawPath(fill, color)
+    if (crest != null) {
+        drawPath(surface, crest, style = Stroke(width = crestWidth))
+    }
 }
 
 /**
  * Animated water that rises to [progress]. Meant to sit behind text inside a
  * clipped shape (circle for the hero ring, full-width for the alarm screen).
+ * The two layers drift in opposite directions so the surfaces cross.
  */
 @Composable
 fun WaterWaves(
@@ -73,16 +87,16 @@ fun WaterWaves(
     modifier: Modifier = Modifier,
     color: Color,
     backColor: Color = color.copy(alpha = 0.45f),
+    crestColor: Color? = null,
 ) {
     val phase by rememberWavePhase()
     val level by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 900),
+        animationSpec = tween(durationMillis = 800),
         label = "waterLevel"
     )
     Canvas(modifier = modifier) {
-        // Back wave drifts the other way so the two surfaces cross each other.
-        drawWave(level = level, phase = -phase * 0.8f + 1.3f, color = backColor, waves = 1.2f)
-        drawWave(level = level, phase = phase, color = color)
+        drawWave(level = level, phase = -phase * 0.7f + 1.3f, color = backColor, waves = 1.2f)
+        drawWave(level = level, phase = phase, color = color, crest = crestColor)
     }
 }

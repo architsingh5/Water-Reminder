@@ -11,6 +11,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -52,9 +53,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -145,6 +148,10 @@ fun HomeScreen(viewModel: ReminderViewModel) {
     }
     val dirty = draft.isDirty(state)
 
+    // Cards rise in one after another on first show.
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+
     Surface(color = MaterialTheme.colorScheme.background) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -174,76 +181,74 @@ fun HomeScreen(viewModel: ReminderViewModel) {
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Cards fade and rise in one after another on first show.
-                var entered by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { entered = true }
-
-                Header(today = state.todayDate)
-
-                Enter(entered, order = 0) {
-                HeroCard(
-                    state = state,
-                    onToggle = { on ->
-                        if (on && !hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            if (notificationPermissionPermanentlyDenied) {
-                                context.startActivity(appSettingsIntent(context))
-                                viewModel.setEnabled(true)
+                Rise(entered, order = 0) { Header(today = state.todayDate) }
+                Rise(entered, order = 1) {
+                    HeroCard(
+                        state = state,
+                        onToggle = { on ->
+                            if (on && !hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                if (notificationPermissionPermanentlyDenied) {
+                                    context.startActivity(appSettingsIntent(context))
+                                    viewModel.setEnabled(true)
+                                } else {
+                                    enableAfterPermission = true
+                                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
                             } else {
-                                enableAfterPermission = true
-                                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                viewModel.setEnabled(on)
                             }
-                        } else {
-                            viewModel.setEnabled(on)
-                        }
-                    },
-                    onLogWater = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.logWaterNow()
-                    },
-                    onPause = viewModel::pauseReminders,
-                    onResume = viewModel::resumeReminders,
-                    onResetToday = { showResetDialog = true },
-                )
+                        },
+                        onLogWater = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.logWaterNow()
+                        },
+                        onPause = viewModel::pauseReminders,
+                        onResume = viewModel::resumeReminders,
+                        onResetToday = { showResetDialog = true },
+                    )
                 }
-                Enter(entered, order = 1) { WeekChartCard(state) }
-                Enter(entered, order = 2) {
-                SettingsCard(
-                    state = state,
-                    draft = draft,
-                    onDraftChange = { draft = it },
-                    onRespectSilentChange = viewModel::setRespectSilentMode,
-                    onAlertStyleChange = viewModel::setAlertStyle,
-                    onDynamicColorChange = viewModel::setDynamicColor,
-                    onThemeModeChange = viewModel::setThemeMode,
-                )
-                }
-                Enter(entered, order = 3) {
-                ReliabilityCard(
-                    hasNotificationPermission = hasNotificationPermission,
-                    notificationPermissionPermanentlyDenied = notificationPermissionPermanentlyDenied,
-                    canScheduleExactAlarms = canScheduleExactAlarms,
-                    canUseFullScreenIntent = canUseFullScreenIntent,
-                    onRequestNotifications = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            if (notificationPermissionPermanentlyDenied) {
-                                context.startActivity(appSettingsIntent(context))
-                            } else {
-                                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }
-                        }
-                    },
-                    onOpenExactAlarmSettings = {
-                        context.startActivity(viewModel.exactAlarmSettingsIntent())
-                    },
-                    onOpenFullScreenSettings = {
-                        context.startActivity(viewModel.fullScreenIntentSettingsIntent())
+                Rise(entered, order = 2) { WeekChartCard(state) }
+                Rise(entered, order = 3) {
+                    // SettingsCard emits three cards; keep the 12 dp rhythm between them.
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SettingsCard(
+                            state = state,
+                            draft = draft,
+                            onDraftChange = { draft = it },
+                            onRespectSilentChange = viewModel::setRespectSilentMode,
+                            onAlertStyleChange = viewModel::setAlertStyle,
+                            onDynamicColorChange = viewModel::setDynamicColor,
+                            onThemeModeChange = viewModel::setThemeMode,
+                        )
                     }
-                )
                 }
-                Spacer(Modifier.height(8.dp))
+                Rise(entered, order = 4) {
+                    ReliabilityCard(
+                        hasNotificationPermission = hasNotificationPermission,
+                        notificationPermissionPermanentlyDenied = notificationPermissionPermanentlyDenied,
+                        canScheduleExactAlarms = canScheduleExactAlarms,
+                        canUseFullScreenIntent = canUseFullScreenIntent,
+                        onRequestNotifications = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                if (notificationPermissionPermanentlyDenied) {
+                                    context.startActivity(appSettingsIntent(context))
+                                } else {
+                                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            }
+                        },
+                        onOpenExactAlarmSettings = {
+                            context.startActivity(viewModel.exactAlarmSettingsIntent())
+                        },
+                        onOpenFullScreenSettings = {
+                            context.startActivity(viewModel.fullScreenIntentSettingsIntent())
+                        }
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
             }
         }
     }
@@ -266,14 +271,16 @@ fun HomeScreen(viewModel: ReminderViewModel) {
     }
 }
 
-/** Staggered entrance wrapper: each card starts 90 ms after the previous one. */
+/** The design's `rise` keyframe: 18 px up + fade, 0.7 s, staggered 70 ms per card. */
 @Composable
-private fun Enter(visible: Boolean, order: Int, content: @Composable () -> Unit) {
-    val delay = order * 90
+private fun Rise(visible: Boolean, order: Int, content: @Composable () -> Unit) {
+    val delay = order * 70
+    val easing = CubicBezierEasing(0.2f, 0.7f, 0.2f, 1f)
+    val rise = with(LocalDensity.current) { 18.dp.roundToPx() }
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(420, delayMillis = delay)) +
-            slideInVertically(tween(420, delayMillis = delay)) { it / 5 },
+        enter = fadeIn(tween(700, delayMillis = delay, easing = easing)) +
+            slideInVertically(tween(700, delayMillis = delay, easing = easing)) { rise },
     ) {
         content()
     }
@@ -284,24 +291,27 @@ private fun Header(today: LocalDate) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 6.dp, start = 4.dp, end = 4.dp),
+            .padding(top = 8.dp, start = 2.dp, end = 2.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AppIcon(R.drawable.ic_water_drop, tint = MaterialTheme.colorScheme.primary, size = 28.dp)
-        Spacer(Modifier.width(10.dp))
-        Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppIcon(R.drawable.ic_water_drop, tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+            Spacer(Modifier.width(8.dp))
             Text(
                 "Water Reminder",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-0.2).sp,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Text(
-                today.format(HeaderDateFormatter),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
+        Text(
+            today.format(HeaderDateFormatter),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -316,7 +326,7 @@ private fun SaveBar(canSave: Boolean, onDiscard: () -> Unit, onSave: () -> Unit)
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 18.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

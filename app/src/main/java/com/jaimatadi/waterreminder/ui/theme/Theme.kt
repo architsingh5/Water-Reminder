@@ -22,9 +22,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.jaimatadi.waterreminder.data.ThemeMode
 
 // ---------------------------------------------------------------------------
-// Two hand-tuned palettes: "Aqua Day" (clean off-white) and "OLED Night"
-// (true black with a cyan glow). Both share the same teal/cyan hue family so
-// the app reads as one brand when the user flips between them.
+// Two hand-tuned palettes from the Claude Design handoff: "Aqua Day" (clean
+// off-white) and "OLED Night" (true black with a cyan glow). Both share the
+// same teal/cyan hue family so the app reads as one brand in either mode.
 // ---------------------------------------------------------------------------
 
 private val LightColors = lightColorScheme(
@@ -34,20 +34,20 @@ private val LightColors = lightColorScheme(
     onPrimaryContainer = Color(0xFF003640),
     secondary = Color(0xFF4F6B72),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFD9EBEF),
+    secondaryContainer = Color(0xFFE6F4F6),
     onSecondaryContainer = Color(0xFF0B1F24),
-    tertiary = Color(0xFF0F8A5F),
+    tertiary = Color(0xFF1B6B3A),
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFC8F5E0),
-    onTertiaryContainer = Color(0xFF00341F),
+    tertiaryContainer = Color(0xFFE4F5EA),
+    onTertiaryContainer = Color(0xFF1B6B3A),
     background = Color(0xFFF6FAFB),
-    onBackground = Color(0xFF0F1B1E),
+    onBackground = Color(0xFF0F1F23),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF0F1B1E),
-    surfaceVariant = Color(0xFFE6EFF2),
-    onSurfaceVariant = Color(0xFF4B6168),
-    outline = Color(0xFF7B929A),
-    outlineVariant = Color(0xFFCBD9DE),
+    onSurface = Color(0xFF0F1F23),
+    surfaceVariant = Color(0xFFE6F4F6),
+    onSurfaceVariant = Color(0xFF5B7378),
+    outline = Color(0xFF5B7378),
+    outlineVariant = Color(0xFFE3ECEE),
     error = Color(0xFFBA1A1A),
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
@@ -55,54 +55,81 @@ private val LightColors = lightColorScheme(
 
 private val DarkColors = darkColorScheme(
     primary = Color(0xFF2EDDF5),
-    onPrimary = Color(0xFF003640),
+    onPrimary = Color(0xFF04242A),
     primaryContainer = Color(0xFF0A3F4A),
     onPrimaryContainer = Color(0xFFBDF3FA),
     secondary = Color(0xFFA7C9D1),
     onSecondary = Color(0xFF10292F),
-    secondaryContainer = Color(0xFF223A41),
+    secondaryContainer = Color(0xFF0F2A30),
     onSecondaryContainer = Color(0xFFD9EBEF),
-    tertiary = Color(0xFF4ADE9C),
+    tertiary = Color(0xFF4FD48A),
     onTertiary = Color(0xFF003320),
-    tertiaryContainer = Color(0xFF0B4A32),
-    onTertiaryContainer = Color(0xFFC8F5E0),
+    tertiaryContainer = Color(0xFF0B1F13),
+    onTertiaryContainer = Color(0xFF4FD48A),
     // Pure black background so OLED pixels switch off; cards sit just above it.
     background = Color(0xFF000000),
-    onBackground = Color(0xFFF2F5F6),
+    onBackground = Color(0xFFF2F7F8),
     surface = Color(0xFF0D0F10),
-    onSurface = Color(0xFFF2F5F6),
-    surfaceVariant = Color(0xFF1A1E20),
-    onSurfaceVariant = Color(0xFF9AA9AE),
-    outline = Color(0xFF4A565A),
-    outlineVariant = Color(0xFF262C2F),
+    onSurface = Color(0xFFF2F7F8),
+    surfaceVariant = Color(0xFF0F2A30),
+    onSurfaceVariant = Color(0xFF8FA6AB),
+    outline = Color(0xFF8FA6AB),
+    outlineVariant = Color(0xFF1C2224),
     error = Color(0xFFFFB4AB),
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
 )
 
-/** Colors outside the Material scheme: the hero card gradient and chart accent. */
+/** Colors outside the Material scheme: hero gradient, water, glows, borders. */
 data class WaterPalette(
     val heroStart: Color,
     val heroEnd: Color,
     val onHero: Color,
-    /** Ring/check color once the daily goal is met. */
-    val goalAccent: Color,
+    /** Progress arc and the wave crest line inside the ring. */
+    val ring: Color,
+    val waterFront: Color,
+    val waterBack: Color,
+    /** "Log water" button on the hero. */
+    val logButtonBg: Color,
+    val logButtonFg: Color,
+    /** Shadow/glow under the log button and selected chart bubble. */
+    val glow: Color,
+    /** 1 px card outline; transparent in light where cards use a soft shadow instead. */
+    val cardBorder: Color,
+    val cardShadow: Color,
+    val streakFlame: Color,
     val chartBar: Color,
 )
 
 private val LightPalette = WaterPalette(
-    heroStart = Color(0xFF0B6B7C),
-    heroEnd = Color(0xFF1096AD),
+    heroStart = Color(0xFF0B7A8C),
+    heroEnd = Color(0xFF06525F),
     onHero = Color(0xFFFFFFFF),
-    goalAccent = Color(0xFFA7F3D0),
+    ring = Color(0xFF9BEAF5),
+    waterFront = Color(0xFF03404B),
+    waterBack = Color(0xFF0A5C6B),
+    logButtonBg = Color(0xFFFEFEFE),
+    logButtonFg = Color(0xFF0A7C8E),
+    glow = Color(0x480A7C8E),
+    cardBorder = Color.Transparent,
+    cardShadow = Color(0x1A0A7C8E),
+    streakFlame = Color(0xFFFFB35C),
     chartBar = Color(0xFF0A7C8E),
 )
 
 private val DarkPalette = WaterPalette(
     heroStart = Color(0xFF041E24),
     heroEnd = Color(0xFF0A3F4A),
-    onHero = Color(0xFFD8F8FD),
-    goalAccent = Color(0xFF4ADE9C),
+    onHero = Color(0xFFFFFFFF),
+    ring = Color(0xFF2EDDF5),
+    waterFront = Color(0xFF053A44),
+    waterBack = Color(0xFF0F6E7C),
+    logButtonBg = Color(0xFF2EDDF5),
+    logButtonFg = Color(0xFF04242A),
+    glow = Color(0x592EDDF5),
+    cardBorder = Color(0xFF1C2224),
+    cardShadow = Color.Transparent,
+    streakFlame = Color(0xFFFFB35C),
     chartBar = Color(0xFF2EDDF5),
 )
 
@@ -138,21 +165,36 @@ fun WaterTheme(
         else -> LightColors
     }
     val palette = when {
-        useDynamic -> WaterPalette(
-            heroStart = target.primary,
-            heroEnd = lerp(target.primary, target.primaryContainer, 0.38f),
-            onHero = target.onPrimary,
-            goalAccent = target.tertiaryContainer,
-            chartBar = target.primary,
-        )
+        useDynamic -> dynamicPalette(target, dark)
         dark -> DarkPalette
         else -> LightPalette
     }
 
     CompositionLocalProvider(LocalWaterPalette provides palette.animated()) {
-        MaterialTheme(colorScheme = target.animated(), content = content)
+        MaterialTheme(
+            colorScheme = target.animated(),
+            typography = WaterTypography,
+            content = content,
+        )
     }
 }
+
+/** Derives the extra colors from a Material You scheme so the layout still reads right. */
+private fun dynamicPalette(scheme: ColorScheme, dark: Boolean) = WaterPalette(
+    heroStart = if (dark) scheme.primaryContainer else scheme.primary,
+    heroEnd = if (dark) lerp(scheme.primaryContainer, Color.Black, 0.5f) else lerp(scheme.primary, Color.Black, 0.3f),
+    onHero = if (dark) scheme.onPrimaryContainer else scheme.onPrimary,
+    ring = if (dark) scheme.primary else scheme.primaryContainer,
+    waterFront = lerp(scheme.primary, Color.Black, 0.55f),
+    waterBack = lerp(scheme.primary, Color.Black, 0.3f),
+    logButtonBg = if (dark) scheme.primary else scheme.surface,
+    logButtonFg = if (dark) scheme.onPrimary else scheme.primary,
+    glow = scheme.primary.copy(alpha = 0.35f),
+    cardBorder = if (dark) scheme.outlineVariant else Color.Transparent,
+    cardShadow = if (dark) Color.Transparent else scheme.primary.copy(alpha = 0.1f),
+    streakFlame = Color(0xFFFFB35C),
+    chartBar = scheme.primary,
+)
 
 // Animate the handful of colors that cover most of the screen so switching
 // theme feels like a fade rather than a flash.
@@ -182,7 +224,15 @@ private fun WaterPalette.animated(): WaterPalette = WaterPalette(
     heroStart = anim(heroStart),
     heroEnd = anim(heroEnd),
     onHero = anim(onHero),
-    goalAccent = anim(goalAccent),
+    ring = anim(ring),
+    waterFront = anim(waterFront),
+    waterBack = anim(waterBack),
+    logButtonBg = anim(logButtonBg),
+    logButtonFg = anim(logButtonFg),
+    glow = anim(glow),
+    cardBorder = anim(cardBorder),
+    cardShadow = anim(cardShadow),
+    streakFlame = streakFlame,
     chartBar = anim(chartBar),
 )
 
@@ -195,12 +245,13 @@ private fun anim(color: Color): Color {
 val chartBarColor: Color
     @Composable get() = LocalWaterPalette.current.chartBar
 
+/** 150° diagonal like the design's `linear-gradient(150deg, …)`. */
 val heroGradient: Brush
     @Composable get() {
         val palette = LocalWaterPalette.current
         return Brush.linearGradient(
             colors = listOf(palette.heroStart, palette.heroEnd),
             start = Offset(0f, 0f),
-            end = Offset(900f, 1400f),
+            end = Offset(600f, 1040f),
         )
     }

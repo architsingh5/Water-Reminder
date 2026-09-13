@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -25,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.jaimatadi.waterreminder.R
 
 @Composable
@@ -41,72 +40,59 @@ fun ReliabilityCard(
     val scheme = MaterialTheme.colorScheme
 
     if (allGood) {
-        // Nothing to do: keep it to a quiet one-liner instead of a full card.
-        Card(
-            modifier = Modifier.fillMaxWidth().animateContentSize(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = scheme.tertiaryContainer),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        // Nothing to do: a quiet green one-liner instead of a full card.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(scheme.tertiaryContainer)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconBadge(
-                    R.drawable.ic_shield,
-                    background = scheme.tertiary,
-                    tint = scheme.onTertiary,
-                    size = 32.dp
-                )
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        "Reminders are set up to be reliable",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = scheme.onTertiaryContainer
-                    )
-                    Text(
-                        "Notifications, exact alarms and full-screen alerts are all allowed.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onTertiaryContainer.copy(alpha = 0.8f)
-                    )
-                }
-            }
+            AppIcon(R.drawable.ic_check_stroke, tint = scheme.onTertiaryContainer, size = 16.dp)
+            Text(
+                "Reminders are set up to be reliable",
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = scheme.onTertiaryContainer
+            )
         }
         return
     }
 
     SectionCard(title = "Reliability", modifier = Modifier.animateContentSize()) {
-        StatusRow("Notifications", hasNotificationPermission)
-        StatusRow("Exact alarms", canScheduleExactAlarms)
-        StatusRow("Full-screen alerts", canUseFullScreenIntent)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            StatusRow("Notifications", hasNotificationPermission)
+            StatusRow("Exact alarms", canScheduleExactAlarms)
+            StatusRow("Full-screen alerts", canUseFullScreenIntent)
 
-        if (!hasNotificationPermission) {
+            if (!hasNotificationPermission) {
+                Text(
+                    "Without notification permission reminders may not be visible at all.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.error
+                )
+                OutlinedButton(onClick = onRequestNotifications, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (notificationPermissionPermanentlyDenied) "Open notification settings" else "Allow notifications")
+                }
+            }
+            if (!canScheduleExactAlarms) {
+                TextButton(onClick = onOpenExactAlarmSettings, modifier = Modifier.fillMaxWidth()) {
+                    Text("Open alarm permission settings")
+                }
+            }
+            if (!canUseFullScreenIntent) {
+                TextButton(onClick = onOpenFullScreenSettings, modifier = Modifier.fillMaxWidth()) {
+                    Text("Open full-screen alert settings")
+                }
+            }
             Text(
-                "Without notification permission reminders may not be visible at all.",
+                "On Samsung phones, keep this app unrestricted in battery settings if reminders arrive late.",
                 style = MaterialTheme.typography.bodySmall,
-                color = scheme.error
+                color = scheme.onSurfaceVariant
             )
-            OutlinedButton(onClick = onRequestNotifications, modifier = Modifier.fillMaxWidth()) {
-                Text(if (notificationPermissionPermanentlyDenied) "Open notification settings" else "Allow notifications")
-            }
         }
-        if (!canScheduleExactAlarms) {
-            TextButton(onClick = onOpenExactAlarmSettings, modifier = Modifier.fillMaxWidth()) {
-                Text("Open alarm permission settings")
-            }
-        }
-        if (!canUseFullScreenIntent) {
-            TextButton(onClick = onOpenFullScreenSettings, modifier = Modifier.fillMaxWidth()) {
-                Text("Open full-screen alert settings")
-            }
-        }
-        Text(
-            "On Samsung phones, keep this app unrestricted in battery settings if reminders arrive late.",
-            style = MaterialTheme.typography.bodySmall,
-            color = scheme.onSurfaceVariant
-        )
     }
 }
 
@@ -117,7 +103,7 @@ private fun StatusRow(label: String, ok: Boolean) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(label, style = MaterialTheme.typography.bodyLarge)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
