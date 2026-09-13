@@ -1,7 +1,9 @@
 package com.jaimatadi.waterreminder
 
-import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -34,8 +36,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +48,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,23 +58,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.jaimatadi.waterreminder.data.ReminderRepository
+import com.jaimatadi.waterreminder.data.ReminderState
 import com.jaimatadi.waterreminder.reminder.ReminderActions
 import com.jaimatadi.waterreminder.reminder.ReminderReceiver
+import com.jaimatadi.waterreminder.ui.TimeFormat
+import com.jaimatadi.waterreminder.ui.components.WaterWaves
 import com.jaimatadi.waterreminder.ui.theme.WaterTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalTime
 
 class AlarmActivity : ComponentActivity() {
     private var alarmPlayer: MediaPlayer? = null
     private var isFloating = false
     private val soundTimeoutHandler = Handler(Looper.getMainLooper())
+
+    // Closes this card when the reminder was answered somewhere else (the
+    // notification's action buttons or the widget), so it doesn't keep ringing.
+    private val handledReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == ReminderActions.Handled) {
+                stopAlarmSound()
+                finish()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         isFloating = !intent.getBooleanExtra(EXTRA_LOCKED, true)
@@ -77,10 +100,12 @@ class AlarmActivity : ComponentActivity() {
         }
         super.onCreate(savedInstanceState)
 
+        // Show over the lock screen like an alarm clock. Deliberately no
+        // requestDismissKeyguard: on a PIN/pattern phone that would pop the
+        // unlock prompt on top of the reminder.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
-            getSystemService(KeyguardManager::class.java).requestDismissKeyguard(this, null)
         }
 
         if (isFloating) {
@@ -95,16 +120,29 @@ class AlarmActivity : ComponentActivity() {
 
         maybeStartAlarmSound()
 
+        val repository = ReminderRepository(applicationContext)
         setContent {
-            WaterTheme {
+            val state by repository.state.collectAsState(initial = ReminderState())
+            WaterTheme(dynamicColor = state.dynamicColor) {
                 AlarmScreen(
                     floating = isFloating,
+                    state = state,
                     onDrank = { sendReminderAction(ReminderActions.Drank) },
                     onSnooze = { sendReminderAction(ReminderActions.Snooze) },
                     onSkip = { sendReminderAction(ReminderActions.Skip) },
                 )
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this,
+            handledReceiver,
+            IntentFilter(ReminderActions.Handled),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -116,6 +154,7 @@ class AlarmActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        runCatching { unregisterReceiver(handledReceiver) }
         stopAlarmSound()
         super.onStop()
     }
@@ -218,60 +257,114 @@ class AlarmActivity : ComponentActivity() {
 @Composable
 private fun AlarmScreen(
     floating: Boolean,
+    state: ReminderState,
     onDrank: () -> Unit,
     onSnooze: () -> Unit,
     onSkip: () -> Unit,
 ) {
+    val progressText = "${state.drinksToday} of ${state.dailyGoal} glasses today"
+
     if (floating) {
         Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
             ) {
-                AlarmContent(
+                Row(
+                    modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    DropBadge(size = 44.dp, iconSize = 24.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text(
+                            "Time to drink water",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            progressText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                AlarmActions(
                     onDrank = onDrank,
                     onSnooze = onSnooze,
                     onSkip = onSkip,
                     modifier = Modifier.padding(20.dp),
-                    titleStyle = MaterialTheme.typography.titleLarge,
-                    bodyStyle = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
-    } else {
-        Box(
+        return
+    }
+
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(listOf(scheme.primaryContainer, scheme.background))
+            )
+    ) {
+        // Water rising along the bottom of the screen: the more of today's goal
+        // is done, the higher it sits.
+        WaterWaves(
+            progress = 0.18f + 0.3f * (state.drinksToday.toFloat() / state.dailyGoal.coerceAtLeast(1)).coerceIn(0f, 1f),
+            color = scheme.primary.copy(alpha = 0.22f),
+            backColor = scheme.primary.copy(alpha = 0.12f),
+            modifier = Modifier.fillMaxSize()
+        )
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.background,
-                        )
-                    )
-                )
+                .padding(horizontal = 28.dp, vertical = 40.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                PulsingDrop()
-                Spacer(Modifier.height(20.dp))
-                CurrentTime()
-                Spacer(Modifier.height(8.dp))
-                AlarmContent(
-                    onDrank = onDrank,
-                    onSnooze = onSnooze,
-                    onSkip = onSkip,
-                    titleStyle = MaterialTheme.typography.headlineLarge,
-                    bodyStyle = MaterialTheme.typography.bodyLarge,
-                )
-            }
+            PulsingDrop()
+            Spacer(Modifier.height(24.dp))
+            CurrentTime()
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Time to drink water",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                color = scheme.onBackground
+            )
+            Text(
+                progressText,
+                modifier = Modifier.padding(top = 6.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = scheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(36.dp))
+            AlarmActions(onDrank = onDrank, onSnooze = onSnooze, onSkip = onSkip)
         }
+    }
+}
+
+@Composable
+private fun DropBadge(size: androidx.compose.ui.unit.Dp, iconSize: androidx.compose.ui.unit.Dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_water_drop),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+            modifier = Modifier.size(iconSize)
+        )
     }
 }
 
@@ -280,7 +373,7 @@ private fun PulsingDrop() {
     val transition = rememberInfiniteTransition(label = "dropPulse")
     val scale by transition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.15f,
+        targetValue = 1.12f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 900),
             repeatMode = RepeatMode.Reverse
@@ -289,22 +382,19 @@ private fun PulsingDrop() {
     )
     Box(
         modifier = Modifier
-            .size(110.dp)
+            .size(140.dp)
             .scale(scale)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
         contentAlignment = Alignment.Center
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_water_drop),
-            contentDescription = null,
-            modifier = Modifier.size(56.dp)
-        )
+        DropBadge(size = 104.dp, iconSize = 56.dp)
     }
 }
 
 @Composable
 private fun CurrentTime() {
+    val context = LocalContext.current
     var time by remember { mutableStateOf(LocalTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -313,38 +403,35 @@ private fun CurrentTime() {
         }
     }
     Text(
-        text = time.format(DateTimeFormatter.ofPattern("HH:mm")),
-        style = MaterialTheme.typography.displayMedium,
+        text = TimeFormat.clock(context, time),
+        style = MaterialTheme.typography.displayLarge,
+        fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground
     )
 }
 
 @Composable
-private fun AlarmContent(
+private fun AlarmActions(
     onDrank: () -> Unit,
     onSnooze: () -> Unit,
     onSkip: () -> Unit,
-    titleStyle: androidx.compose.ui.text.TextStyle,
-    bodyStyle: androidx.compose.ui.text.TextStyle,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Time to drink water",
-            style = titleStyle,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = "Confirm after drinking so the next reminder starts from this time.",
-            modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
-            style = bodyStyle,
-            textAlign = TextAlign.Center
-        )
-        Button(onClick = onDrank, modifier = Modifier.fillMaxWidth()) {
-            Text("Drank")
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Button(
+            onClick = onDrank,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(18.dp),
+            contentPadding = ButtonDefaults.ContentPadding
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_check),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Drank", style = MaterialTheme.typography.titleMedium)
         }
         Row(
             modifier = Modifier
@@ -352,10 +439,18 @@ private fun AlarmContent(
                 .padding(top = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedButton(onClick = onSnooze, modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = onSnooze,
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Text("Snooze")
             }
-            OutlinedButton(onClick = onSkip, modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = onSkip,
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Text("Skip")
             }
         }

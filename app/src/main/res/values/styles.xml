@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- System bars are transparent: the app draws edge-to-edge and Compose
+         handles the insets, so the gradient/background shows behind them. -->
     <style name="Theme.WaterReminder" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:statusBarColor">#F8FAFC</item>
-        <item name="android:navigationBarColor">#F8FAFC</item>
+        <item name="android:windowBackground">#F2F7FC</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <style name="Theme.WaterReminder.Alarm" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:statusBarColor">#DBEAFE</item>
-        <item name="android:navigationBarColor">#DBEAFE</item>
+        <item name="android:windowBackground">#D3E9F9</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <style name="Theme.WaterReminder.Alarm.Floating" parent="Theme.WaterReminder.Alarm">

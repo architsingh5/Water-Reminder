@@ -44,9 +44,24 @@ class ReminderReceiver : BroadcastReceiver() {
                     return
                 }
 
+                val pausedUntil = state.pausedUntil
+                if (pausedUntil != null && pausedUntil.isAfter(nowInstant)) {
+                    // Stale alarm from before the pause was set: stay quiet and
+                    // pick the loop back up when the pause ends.
+                    scheduleNext(
+                        repository,
+                        scheduler,
+                        ReminderCalculator.afterPause(pausedUntil.atZone(now.zone), state.config).toInstant()
+                    )
+                    return
+                }
+                if (pausedUntil != null) {
+                    repository.setPausedUntil(null)
+                }
+
                 if (ReminderCalculator.isInsideActiveWindow(now.toLocalTime(), state.config)) {
                     repository.recordReminderShown(nowInstant)
-                    notification.showReminder()
+                    notification.showReminder(state.alertStyle)
                     // Schedule the next occurrence immediately so the reminder loop
                     // keeps going even if the user never acts on this alert.
                     scheduleNext(repository, scheduler, ReminderCalculator.whenEnabled(now, state.config).toInstant())
@@ -58,6 +73,7 @@ class ReminderReceiver : BroadcastReceiver() {
             ReminderActions.Drank -> {
                 repository.recordDrink(nowInstant)
                 notification.dismiss()
+                notifyHandled(context)
                 if (state.enabled) {
                     scheduleNext(repository, scheduler, ReminderCalculator.afterDrink(now, state.config).toInstant())
                 } else {
@@ -68,6 +84,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
             ReminderActions.Snooze -> {
                 notification.dismiss()
+                notifyHandled(context)
                 if (state.enabled) {
                     scheduleNext(repository, scheduler, ReminderCalculator.afterSnooze(now, state.config).toInstant())
                 } else {
@@ -79,6 +96,7 @@ class ReminderReceiver : BroadcastReceiver() {
             ReminderActions.Skip -> {
                 repository.recordSkip()
                 notification.dismiss()
+                notifyHandled(context)
                 if (state.enabled) {
                     scheduleNext(repository, scheduler, ReminderCalculator.afterSkip(now, state.config).toInstant())
                 } else {
@@ -86,7 +104,20 @@ class ReminderReceiver : BroadcastReceiver() {
                     repository.setNextReminder(null)
                 }
             }
+
+            ReminderActions.RefreshWidgets -> {
+                // The widget redraw itself happens in the finally block above;
+                // just arm the next midnight tick.
+                ReminderReconciler.ensureWidgetRefresh(context)
+            }
         }
+    }
+
+    /** Lets an alarm card that is still on screen close itself (see [ReminderActions.Handled]). */
+    private fun notifyHandled(context: Context) {
+        context.sendBroadcast(
+            Intent(ReminderActions.Handled).setPackage(context.packageName)
+        )
     }
 
     private suspend fun fallbackReschedule(context: Context) {

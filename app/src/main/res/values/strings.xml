@@ -6,6 +6,7 @@
     <string name="widget_of_goal">of %d</string>
     <string name="widget_of_goal_placeholder">of 8</string>
     <string name="widget_next_at">Next reminder %s</string>
+    <string name="widget_paused_until">Paused until %s</string>
     <string name="widget_no_reminder">No reminder scheduled</string>
     <string name="widget_reminders_off">Reminders off</string>
 </resources>

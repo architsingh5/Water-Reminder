@@ -19,6 +19,19 @@ import java.time.ZonedDateTime
 
 private val Context.waterReminderDataStore by preferencesDataStore("water_reminder")
 
+enum class AlertStyle(val storedValue: String) {
+    /** Full-screen / floating alarm card with sound (the original behavior). */
+    Alarm("alarm"),
+
+    /** A regular heads-up notification with actions, no ringing. */
+    Notification("notification");
+
+    companion object {
+        fun fromStored(value: String?): AlertStyle =
+            entries.firstOrNull { it.storedValue == value } ?: Alarm
+    }
+}
+
 data class ReminderState(
     val enabled: Boolean = false,
     val dayStart: LocalTime = LocalTime.of(7, 0),
@@ -27,6 +40,9 @@ data class ReminderState(
     val snoozeMinutes: Long = 15,
     val dailyGoal: Int = 8,
     val respectSilentMode: Boolean = false,
+    val alertStyle: AlertStyle = AlertStyle.Alarm,
+    val dynamicColor: Boolean = false,
+    val pausedUntil: Instant? = null,
     val nextReminderAt: Instant? = null,
     val lastShownAt: Instant? = null,
     val lastDrinkAt: Instant? = null,
@@ -38,6 +54,11 @@ data class ReminderState(
 ) {
     val config: ReminderConfig
         get() = ReminderConfig(dayStart, dayEnd, intervalMinutes, snoozeMinutes)
+
+    val streaks: Streaks
+        get() = computeStreaks(dailyMetrics, dailyGoal, todayDate)
+
+    fun isPausedAt(now: Instant): Boolean = pausedUntil?.isAfter(now) == true
 }
 
 data class DailyMetrics(
@@ -70,6 +91,9 @@ class ReminderRepository(context: Context) {
             snoozeMinutes = preferences[Keys.snoozeMinutes] ?: 15L,
             dailyGoal = preferences[Keys.dailyGoal] ?: 8,
             respectSilentMode = preferences[Keys.respectSilentMode] ?: false,
+            alertStyle = AlertStyle.fromStored(preferences[Keys.alertStyle]),
+            dynamicColor = preferences[Keys.dynamicColor] ?: false,
+            pausedUntil = preferences[Keys.pausedUntilMillis]?.let(Instant::ofEpochMilli),
             nextReminderAt = preferences[Keys.nextReminderAtMillis]?.let(Instant::ofEpochMilli),
             lastShownAt = preferences[Keys.lastShownAtMillis]?.let(Instant::ofEpochMilli),
             lastDrinkAt = preferences[Keys.lastDrinkAtMillis]?.let(Instant::ofEpochMilli),
@@ -131,6 +155,21 @@ class ReminderRepository(context: Context) {
         }
     }
 
+    /** Reverses one "Log water" tap. Returns false when there was nothing to undo. */
+    suspend fun undoLastDrink(): Boolean {
+        var undone = false
+        dataStore.edit { preferences ->
+            ensureToday(preferences)
+            val drinks = preferences[Keys.drinksToday] ?: 0
+            if (drinks > 0) {
+                preferences[Keys.drinksToday] = drinks - 1
+                undone = true
+            }
+            persistCurrentDay(preferences)
+        }
+        return undone
+    }
+
     suspend fun recordSkip() {
         dataStore.edit { preferences ->
             ensureToday(preferences)
@@ -152,6 +191,28 @@ class ReminderRepository(context: Context) {
     suspend fun setRespectSilentMode(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.respectSilentMode] = enabled
+        }
+    }
+
+    suspend fun setAlertStyle(style: AlertStyle) {
+        dataStore.edit { preferences ->
+            preferences[Keys.alertStyle] = style.storedValue
+        }
+    }
+
+    suspend fun setDynamicColor(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.dynamicColor] = enabled
+        }
+    }
+
+    suspend fun setPausedUntil(pausedUntil: Instant?) {
+        dataStore.edit { preferences ->
+            if (pausedUntil == null) {
+                preferences.remove(Keys.pausedUntilMillis)
+            } else {
+                preferences[Keys.pausedUntilMillis] = pausedUntil.toEpochMilli()
+            }
         }
     }
 
@@ -199,6 +260,9 @@ class ReminderRepository(context: Context) {
         val snoozeMinutes = longPreferencesKey("snooze_minutes")
         val dailyGoal = intPreferencesKey("daily_goal")
         val respectSilentMode = booleanPreferencesKey("respect_silent_mode")
+        val alertStyle = stringPreferencesKey("alert_style")
+        val dynamicColor = booleanPreferencesKey("dynamic_color")
+        val pausedUntilMillis = longPreferencesKey("paused_until_millis")
         val nextReminderAtMillis = longPreferencesKey("next_reminder_at_millis")
         val lastShownAtMillis = longPreferencesKey("last_shown_at_millis")
         val lastDrinkAtMillis = longPreferencesKey("last_drink_at_millis")

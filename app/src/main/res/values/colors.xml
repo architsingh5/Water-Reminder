@@ -8,4 +8,13 @@
     <color name="widget_accent">#1E88D2</color>
     <color name="widget_on_accent">#FFFFFF</color>
     <color name="widget_progress_track">#C9E2F5</color>
+
+    <!-- Material You variant; overridden in values-v31. Below Android 12 these
+         simply mirror the brand palette so the dynamic layout still renders. -->
+    <color name="widget_dyn_background">@color/widget_background</color>
+    <color name="widget_dyn_text_primary">@color/widget_text_primary</color>
+    <color name="widget_dyn_text_secondary">@color/widget_text_secondary</color>
+    <color name="widget_dyn_accent">@color/widget_accent</color>
+    <color name="widget_dyn_on_accent">@color/widget_on_accent</color>
+    <color name="widget_dyn_progress_track">@color/widget_progress_track</color>
 </resources>

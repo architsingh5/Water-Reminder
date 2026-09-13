@@ -36,6 +36,23 @@ class ReminderScheduler(private val context: Context) {
         alarmManager.cancel(reminderPendingIntent())
     }
 
+    /** Inexact, non-waking alarm: the widget can catch up whenever the device is next awake. */
+    fun scheduleWidgetRefresh(at: Instant) {
+        alarmManager.set(AlarmManager.RTC, at.toEpochMilli(), widgetRefreshPendingIntent())
+    }
+
+    private fun widgetRefreshPendingIntent(): PendingIntent {
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = ReminderActions.RefreshWidgets
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_WIDGET_REFRESH,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
     fun canScheduleExactAlarms(): Boolean {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
     }
@@ -77,3 +94,4 @@ class ReminderScheduler(private val context: Context) {
 }
 
 const val REQUEST_CODE_REMINDER = 1000
+const val REQUEST_CODE_WIDGET_REFRESH = 1001

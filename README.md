@@ -5,19 +5,24 @@ Native Android water reminder app for configurable awake hours, snooze, skip, an
 ## Behavior
 
 - Configure day start, day end, reminder interval, snooze duration, and a daily glass goal.
-- Enable reminders from the home screen.
-- Home screen shows an animated goal progress ring, a live countdown to the next reminder, and a tappable last-7-days chart.
-- Home screen widget shows today's progress and next reminder, with a one-tap log button.
+- Enable reminders from the home screen; on Android 13+ the notification permission is requested right there.
+- Home screen shows a goal ring with animated water fill, a live countdown to the next reminder, today's streak, and a tappable last-7-days chart with a weekly summary.
+- Home screen widget shows today's progress and next reminder, with a one-tap log button. It rolls over at midnight and, on Android 12+, can follow the wallpaper palette.
 - `Drank` records water intake and schedules the next reminder from the confirmation time.
 - `Snooze` delays the current reminder without recording intake.
 - `Skip` dismisses the current reminder and schedules the next reminder from the skip time.
-- Manual water logging also recalculates the next reminder from the manual log time.
+- Manual water logging also recalculates the next reminder from the manual log time; an `Undo` snackbar reverses an accidental tap.
+- Pause reminders for 1 hour, 2 hours, or until tomorrow's day start; resume any time.
 - Reminders outside awake hours are moved to the next valid day start.
+- Streaks: consecutive days on which the goal was met (current and best).
 - Date-wise analytics show daily drank, reminder, and skipped counts.
-- `Reset today` clears only the current day's visible metrics.
-- Reminder alerts open a full-screen alarm-style screen, play an alarm sound (auto-silenced after 60 seconds), and treat swipe-dismiss as skip so the next reminder advances.
-- Optional respect silent mode: skip the alarm sound while the phone is on vibrate or silent (off by default; the alarm otherwise rings like a real alarm clock).
-- Light and dark themes follow the system setting, including the widget.
+- `Reset today` clears only the current day's visible metrics (after confirmation).
+- Alert style: **Alarm** opens a full-screen alarm-style screen, plays an alarm sound (auto-silenced after 60 seconds), and treats swipe-dismiss as skip; **Notification** shows a normal heads-up notification with the same actions and no ringing.
+- Acting on a reminder from the notification or widget also closes an alarm card that is still on screen.
+- Optional respect silent mode (alarm style only): skip the alarm sound while the phone is on vibrate or silent.
+- Reminders are re-armed automatically after a reboot, an app update, or a time/timezone change.
+- Clock labels follow the phone's 12/24-hour setting.
+- Light and dark themes follow the system setting, including the widget. Optional Material You dynamic color on Android 12+.
 
 Example: with a 60-minute interval, if a 10:00 reminder is snoozed for 15 minutes and `Drank` is tapped at 10:15, the next reminder is scheduled for 11:15.
 

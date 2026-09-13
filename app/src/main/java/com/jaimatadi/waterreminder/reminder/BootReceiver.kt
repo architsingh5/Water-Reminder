@@ -3,53 +3,41 @@ package com.jaimatadi.waterreminder.reminder
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.jaimatadi.waterreminder.data.ReminderRepository
+import com.jaimatadi.waterreminder.widget.WaterWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * Re-arms the reminder alarm after anything that makes AlarmManager forget it:
+ * reboot, app update, or a wall-clock / timezone change that would leave the
+ * stored trigger time outside the awake window.
+ */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        if (intent.action !in HANDLED_ACTIONS) return
 
         val pendingResult = goAsync()
         val appContext = context.applicationContext
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val repository = ReminderRepository(appContext)
-                val state = repository.snapshot()
-                val scheduler = ReminderScheduler(appContext)
-
-                if (state.enabled) {
-                    val now = repository.nowZoned()
-                    val storedNext = state.nextReminderAt
-                    val next = if (storedNext != null && storedNext.isAfter(now.toInstant())) {
-                        storedNext
-                    } else {
-                        ReminderCalculator.whenEnabled(now, state.config).toInstant()
-                    }
-                    repository.setNextReminder(next)
-                    scheduler.schedule(next)
-                } else {
-                    scheduler.cancel()
-                }
+                ReminderReconciler.ensureScheduled(appContext)
             } catch (t: Throwable) {
-                runCatching {
-                    val repository = ReminderRepository(appContext)
-                    val state = repository.snapshot()
-                    if (state.enabled) {
-                        val next = ReminderCalculator.whenEnabled(repository.nowZoned(), state.config).toInstant()
-                        repository.setNextReminder(next)
-                        ReminderScheduler(appContext).schedule(next)
-                    }
-                }
+                // Nothing more to do; the next app launch reconciles again.
             } finally {
-                runCatching {
-                    com.jaimatadi.waterreminder.widget.WaterWidgetProvider.requestUpdate(appContext)
-                }
+                runCatching { WaterWidgetProvider.requestUpdate(appContext) }
                 pendingResult.finish()
             }
         }
+    }
+
+    private companion object {
+        val HANDLED_ACTIONS = setOf(
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+        )
     }
 }

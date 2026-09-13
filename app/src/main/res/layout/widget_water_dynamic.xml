@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Same structure as widget_water.xml, colored with the Material You palette.
+     Keep the two files in sync when changing the layout. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
+    android:background="@drawable/widget_background_dynamic"
     android:orientation="vertical"
     android:padding="14dp">
 
@@ -18,7 +20,7 @@
             android:layout_height="18dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_water_drop"
-            android:tint="@color/widget_accent" />
+            android:tint="@color/widget_dyn_accent" />
 
         <TextView
             android:layout_width="0dp"
@@ -26,17 +28,17 @@
             android:layout_marginStart="6dp"
             android:layout_weight="1"
             android:text="@string/app_name"
-            android:textColor="@color/widget_text_secondary"
+            android:textColor="@color/widget_dyn_text_secondary"
             android:textSize="12sp" />
 
         <ImageButton
             android:id="@+id/widget_log_button"
             android:layout_width="34dp"
             android:layout_height="34dp"
-            android:background="@drawable/widget_button_background"
+            android:background="@drawable/widget_button_background_dynamic"
             android:contentDescription="@string/widget_log_water"
             android:src="@drawable/ic_add"
-            android:tint="@color/widget_on_accent" />
+            android:tint="@color/widget_dyn_on_accent" />
     </LinearLayout>
 
     <LinearLayout
@@ -51,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0"
-            android:textColor="@color/widget_text_primary"
+            android:textColor="@color/widget_dyn_text_primary"
             android:textSize="30sp"
             android:textStyle="bold" />
 
@@ -62,7 +64,7 @@
             android:layout_marginStart="4dp"
             android:layout_marginBottom="4dp"
             android:text="@string/widget_of_goal_placeholder"
-            android:textColor="@color/widget_text_secondary"
+            android:textColor="@color/widget_dyn_text_secondary"
             android:textSize="13sp" />
     </LinearLayout>
 
@@ -72,7 +74,7 @@
         android:layout_width="match_parent"
         android:layout_height="6dp"
         android:layout_marginTop="8dp"
-        android:progressDrawable="@drawable/widget_progress_drawable" />
+        android:progressDrawable="@drawable/widget_progress_drawable_dynamic" />
 
     <TextView
         android:id="@+id/widget_next"
@@ -80,6 +82,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="@string/widget_no_reminder"
-        android:textColor="@color/widget_text_secondary"
+        android:textColor="@color/widget_dyn_text_secondary"
         android:textSize="12sp" />
 </LinearLayout>

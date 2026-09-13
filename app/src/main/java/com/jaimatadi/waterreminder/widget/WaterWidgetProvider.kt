@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.widget.RemoteViews
 import com.jaimatadi.waterreminder.MainActivity
 import com.jaimatadi.waterreminder.R
@@ -13,11 +14,12 @@ import com.jaimatadi.waterreminder.data.ReminderRepository
 import com.jaimatadi.waterreminder.data.ReminderState
 import com.jaimatadi.waterreminder.reminder.ReminderActions
 import com.jaimatadi.waterreminder.reminder.ReminderReceiver
+import com.jaimatadi.waterreminder.reminder.ReminderReconciler
+import com.jaimatadi.waterreminder.ui.TimeFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import java.time.Instant
 
 class WaterWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(
@@ -40,8 +42,17 @@ class WaterWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        // First widget placed: make sure it rolls over at midnight.
+        runCatching { ReminderReconciler.ensureWidgetRefresh(context.applicationContext) }
+    }
+
     private fun buildViews(context: Context, state: ReminderState): RemoteViews {
-        return RemoteViews(context.packageName, R.layout.widget_water).apply {
+        val dynamic = state.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        val layout = if (dynamic) R.layout.widget_water_dynamic else R.layout.widget_water
+
+        return RemoteViews(context.packageName, layout).apply {
             setTextViewText(R.id.widget_count, state.drinksToday.toString())
             setTextViewText(
                 R.id.widget_goal,
@@ -62,13 +73,13 @@ class WaterWidgetProvider : AppWidgetProvider() {
 
     private fun nextReminderLabel(context: Context, state: ReminderState): String {
         val next = state.nextReminderAt
+        val pausedUntil = state.pausedUntil
         return when {
             !state.enabled -> context.getString(R.string.widget_reminders_off)
+            pausedUntil != null && pausedUntil.isAfter(Instant.now()) ->
+                context.getString(R.string.widget_paused_until, TimeFormat.clock(context, pausedUntil))
             next == null -> context.getString(R.string.widget_no_reminder)
-            else -> context.getString(
-                R.string.widget_next_at,
-                next.atZone(ZoneId.systemDefault()).format(TimeFormatter)
-            )
+            else -> context.getString(R.string.widget_next_at, TimeFormat.clock(context, next))
         }
     }
 
@@ -96,7 +107,6 @@ class WaterWidgetProvider : AppWidgetProvider() {
     companion object {
         private const val REQUEST_OPEN_APP = 20
         private const val REQUEST_LOG_WATER = 21
-        private val TimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
         /**
          * Ask the system to redraw every placed widget. Funnels through the

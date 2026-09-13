@@ -77,6 +77,27 @@ class ReminderCalculatorTest {
         assertEquals(at(10, 15), next)
     }
 
+    @Test
+    fun nextDayStartIsTodayWhenStillAhead() {
+        assertEquals(at(7, 0), ReminderCalculator.nextDayStart(at(6, 30), config))
+    }
+
+    @Test
+    fun nextDayStartIsTomorrowOnceTodayStartHasPassed() {
+        assertEquals(atNextDay(7, 0), ReminderCalculator.nextDayStart(at(7, 0), config))
+        assertEquals(atNextDay(7, 0), ReminderCalculator.nextDayStart(at(15, 0), config))
+    }
+
+    @Test
+    fun afterPauseInsideWindowResumesAtPauseEnd() {
+        assertEquals(at(12, 30), ReminderCalculator.afterPause(at(12, 30), config))
+    }
+
+    @Test
+    fun afterPauseOutsideWindowMovesToNextStart() {
+        assertEquals(atNextDay(7, 0), ReminderCalculator.afterPause(at(23, 30), config))
+    }
+
     private fun at(hour: Int, minute: Int): ZonedDateTime {
         return ZonedDateTime.of(LocalDate.of(2026, 7, 4), LocalTime.of(hour, minute), zone)
     }

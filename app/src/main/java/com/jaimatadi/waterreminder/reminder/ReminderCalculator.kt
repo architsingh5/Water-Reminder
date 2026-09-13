@@ -31,6 +31,17 @@ object ReminderCalculator {
         return normalize(now.plusMinutes(config.intervalMinutes), config)
     }
 
+    /** First reminder once a pause ends: at the pause end itself, moved into the active window. */
+    fun afterPause(pausedUntil: ZonedDateTime, config: ReminderConfig): ZonedDateTime {
+        return normalize(pausedUntil, config)
+    }
+
+    /** Next day-start after [now]; used for "pause until tomorrow". */
+    fun nextDayStart(now: ZonedDateTime, config: ReminderConfig): ZonedDateTime {
+        val todayStart = now.with(config.dayStart).withSecond(0).withNano(0)
+        return if (todayStart.isAfter(now)) todayStart else todayStart.plusDays(1)
+    }
+
     fun normalize(candidate: ZonedDateTime, config: ReminderConfig): ZonedDateTime {
         require(config.intervalMinutes > 0) { "intervalMinutes must be positive" }
         require(config.snoozeMinutes > 0) { "snoozeMinutes must be positive" }

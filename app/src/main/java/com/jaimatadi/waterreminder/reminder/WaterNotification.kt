@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.jaimatadi.waterreminder.AlarmActivity
 import com.jaimatadi.waterreminder.MainActivity
 import com.jaimatadi.waterreminder.R
+import com.jaimatadi.waterreminder.data.AlertStyle
 
 class WaterNotification(private val context: Context) {
     fun createChannel() {
@@ -40,35 +41,42 @@ class WaterNotification(private val context: Context) {
         manager.createNotificationChannel(channel)
     }
 
-    fun showReminder() {
+    fun showReminder(style: AlertStyle = AlertStyle.Alarm) {
         createChannel()
 
-        // Always show the alarm activity: full screen when the phone is locked
-        // or asleep, or as a top-anchored floating card (like a real alarm's
-        // ringing banner) when the phone is already awake and unlocked.
-        val locked = isDeviceLockedOrAsleep()
-        launchAlarmActivity(locked)
+        val alarmStyle = style == AlertStyle.Alarm
+        if (alarmStyle) {
+            // Try to show the alarm card right away: full screen when the phone is
+            // locked or asleep, or a top-anchored floating card when it's in use.
+            // Android 10+ blocks this launch from the background unless the app
+            // is already in the foreground; in that case the heads-up
+            // notification below (with its full-screen intent for the locked
+            // case) is what the user sees.
+            launchAlarmActivity(isDeviceLockedOrAsleep())
+        }
 
         if (!canPostNotifications()) return
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_water_drop)
             .setContentTitle("Time to drink water")
             .setContentText("Confirm when you drink so the next reminder starts from that time.")
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setCategory(if (alarmStyle) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(false)
             .setOngoing(false)
             .setContentIntent(openAppPendingIntent())
-            .setFullScreenIntent(alarmPendingIntent(), true)
             .setDeleteIntent(actionPendingIntent(ReminderActions.Skip, 4))
             .addAction(0, "Drank", actionPendingIntent(ReminderActions.Drank, 1))
             .addAction(0, "Snooze", actionPendingIntent(ReminderActions.Snooze, 2))
             .addAction(0, "Skip", actionPendingIntent(ReminderActions.Skip, 3))
-            .build()
 
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        if (alarmStyle) {
+            builder.setFullScreenIntent(alarmPendingIntent(), true)
+        }
+
+        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
     }
 
     fun dismiss() {
