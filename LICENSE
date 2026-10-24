@@ -1,0 +1,27 @@
+Copyright (c) 2026 Archit Singh. All rights reserved.
+
+This repository is public so its source code can be read. It is not open
+source, and no license is granted except as stated below.
+
+You may:
+- view and read the source code;
+- build the app from this source and install it on your own devices for
+  your personal, non-commercial use.
+
+You may not, without prior written permission from the copyright holder:
+- publish, distribute, sublicense or sell this app or any modified version
+  of it, including on Google Play or any other app store or download site;
+- reuse the app's name, icon or other branding;
+- use this source code, in whole or in part, in another product.
+
+The app's official releases are published only at
+https://github.com/architsingh5/Water-Reminder/releases.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+
+Third-party components keep their own licenses:
+- Manrope and DM Serif Display fonts (app/src/main/res/font): SIL Open Font
+  License 1.1, see licenses/OFL-Manrope.txt and licenses/OFL-DMSerifDisplay.txt.
+- AndroidX and Jetpack Compose libraries: Apache License 2.0.

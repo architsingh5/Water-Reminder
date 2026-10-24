@@ -117,3 +117,7 @@ Releases are built and signed by GitHub Actions; nothing is needed on a local ma
 The workflow builds, tests and lints the app, and signs the APK with the release key stored in the repository secrets (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`). It checks that the signing certificate matches the expected fingerprint, then tags `v<versionName>` and publishes the release with `WaterReminder-v<versionName>.apk` attached. Keep a backup of the release keystore: without it, no future APK can update the installed app.
 
 Local `assembleRelease` builds without those variables are debug-signed and can't update a release install.
+
+## License
+
+Copyright (c) 2026 Archit Singh. All rights reserved. The source is public to read, and you may build it for your own personal use, but publishing or redistributing the app (including on Google Play) is not permitted. See [LICENSE](LICENSE). The bundled fonts are under the SIL Open Font License; see [licenses/](licenses/).
