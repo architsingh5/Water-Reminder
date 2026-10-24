@@ -105,3 +105,15 @@ Enable Developer options and USB debugging on your Samsung phone, connect it by 
 ```
 
 On Android 13 and newer, allow notification permission. For reliable exact timing, allow the app's alarm permission if the Reliability card reports that exact alarms need permission. If reminders only appear as notifications, open the full-screen alert setting from the Reliability card and allow full-screen alerts for this app. On Samsung One UI, set the app battery mode to unrestricted if reminders are delayed.
+
+## Releasing
+
+Releases are built and signed by GitHub Actions; nothing is needed on a local machine.
+
+1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`.
+2. Add release notes at `.github/release-notes/v<versionName>.md`.
+3. Merge to `master`, then run the **Release** workflow from the Actions tab.
+
+The workflow builds, tests and lints the app, and signs the APK with the release key stored in the repository secrets (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`). It checks that the signing certificate matches the expected fingerprint, then tags `v<versionName>` and publishes the release with `WaterReminder-v<versionName>.apk` attached. Keep a backup of the release keystore: without it, no future APK can update the installed app.
+
+Local `assembleRelease` builds without those variables are debug-signed and can't update a release install.
