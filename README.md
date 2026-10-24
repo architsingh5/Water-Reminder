@@ -40,24 +40,22 @@ Example: with a 60-minute interval, if a 10:00 reminder is snoozed for 15 minute
 
 You can build this with Gradle from the command line. You do not need Android Studio, but you still need:
 
-- JDK 17
-- Gradle, at least once, to generate the Gradle wrapper
+- A JDK from 17 to 25 (the Gradle 9.6 wrapper runs on any of them; the app is compiled to Java 17 bytecode either way)
 - Android SDK command-line tools
 - Android SDK platform/build tools for API 36
 - USB debugging enabled on your phone if you want to install directly
 
 If you are setting this project up in an online Linux workspace, see [.agents/linux-onboarding.md](.agents/linux-onboarding.md) for the Linux-first setup path.
 
-### 1. Install JDK 17 and Gradle
+### 1. Install a JDK (17–25)
 
-On Windows:
+The repository ships the Gradle wrapper (Gradle 9.6.1, Android Gradle Plugin 9.4.0), so you do not need a separate Gradle install. Any JDK from 17 to 25 works. If you do not have one yet, on Windows:
 
 ```powershell
-winget install -e --id EclipseAdoptium.Temurin.17.JDK
-winget install -e --id Gradle.Gradle
+winget install -e --id EclipseAdoptium.Temurin.21.JDK
 ```
 
-After installing JDK 17, make sure `JAVA_HOME` points to JDK 17 before building. Android Gradle builds should not run on Java 25.
+Make sure `JAVA_HOME` points to that JDK before building.
 
 ### 2. Install Android SDK Command-Line Tools
 
@@ -88,15 +86,9 @@ Install the required SDK packages:
 & "$env:ANDROID_HOME\cmdline-tools\latest\bin\sdkmanager.bat" --licenses
 ```
 
-### 3. Generate the Gradle Wrapper
+### 3. Build With the Gradle Wrapper
 
-From this project folder:
-
-```powershell
-gradle wrapper --gradle-version 8.10.2
-```
-
-After this, use `gradlew.bat` instead of the system Gradle install:
+From this project folder, use `gradlew.bat` (it downloads Gradle 9.6.1 on first run):
 
 ```powershell
 .\gradlew.bat test

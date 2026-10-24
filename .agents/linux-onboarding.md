@@ -4,7 +4,7 @@ This workspace is set up to work in an online Linux dev environment.
 
 ## What this project needs
 
-- JDK 17
+- A JDK from 17 to 25
 - Gradle wrapper from the repository
 - Android SDK command-line tools
 - Android platform tools
@@ -14,7 +14,7 @@ This workspace is set up to work in an online Linux dev environment.
 
 Set these environment variables in the Linux workspace:
 
-- `JAVA_HOME` to the JDK 17 install
+- `JAVA_HOME` to a JDK 17–25 install
 - `ANDROID_HOME` to the Android SDK root
 - `ANDROID_SDK_ROOT` to the same SDK root
 
