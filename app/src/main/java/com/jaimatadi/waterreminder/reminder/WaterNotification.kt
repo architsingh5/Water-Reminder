@@ -76,7 +76,11 @@ class WaterNotification(private val context: Context) {
             builder.setFullScreenIntent(alarmPendingIntent(), true)
         }
 
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+        } catch (_: SecurityException) {
+            // Permission was revoked between canPostNotifications() and here.
+        }
     }
 
     fun dismiss() {
