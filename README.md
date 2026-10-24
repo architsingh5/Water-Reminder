@@ -49,7 +49,7 @@ If you are setting this project up in an online Linux workspace, see [.agents/li
 
 ### 1. Install a JDK (17–25)
 
-The repository ships the Gradle wrapper (Gradle 9.6.1, Android Gradle Plugin 9.4.0), so you do not need a separate Gradle install. Any JDK from 17 to 25 works. If you do not have one yet, on Windows:
+The repository ships the Gradle wrapper (Gradle 9.6.1, Android Gradle Plugin 9.4.1), so you do not need a separate Gradle install. Any JDK from 17 to 25 works. If you do not have one yet, on Windows:
 
 ```powershell
 winget install -e --id EclipseAdoptium.Temurin.21.JDK
